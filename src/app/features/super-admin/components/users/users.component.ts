@@ -598,10 +598,16 @@ export class UsersComponent implements OnInit {
     // This is a placeholder - in a real app, you would calculate this based on login history
     if (!user.last_sign_in_at) return 'No logins';
 
-    // For demo purposes, return a random frequency
+    // Instead of random values, use a deterministic approach based on the user's ID
+    // This ensures consistent rendering and avoids ExpressionChangedAfterItHasBeenCheckedError
     const frequencies = ['Frequent', 'Regular', 'Occasional', 'Rare'];
-    const randomIndex = Math.floor(Math.random() * frequencies.length);
-    return frequencies[randomIndex];
+    if (!user.id) return frequencies[0];
+
+    // Use the last character of the user ID to determine frequency
+    const lastChar = user.id.charAt(user.id.length - 1);
+    const charCode = lastChar.charCodeAt(0);
+    const index = charCode % frequencies.length;
+    return frequencies[index];
   }
 
   formatStorage(bytes: number | undefined): string {

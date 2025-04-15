@@ -292,6 +292,9 @@ export class UserManagementService {
       map(({ data, error }) => {
         if (error) throw error;
 
+        // Store the profile data for later use
+        const profileData = data;
+
         // If we have organization updates and an organization ID, update the organization
         if (Object.keys(organizationUpdateData).length > 0 && organizationId) {
           return from(
@@ -303,30 +306,49 @@ export class UserManagementService {
           ).pipe(
             map(orgResult => {
               if (orgResult.error) throw orgResult.error;
-              return data; // Return the profile data
+              // Return both profile data and organization data
+              return { profileData, orgData: orgResult.data };
             })
           );
         }
 
         // Otherwise just return the profile data
-        return of(data);
+        return of({ profileData, orgData: null });
       }),
       // Flatten the observable
       switchMap(result => result),
-      map(({ data, error }) => {
-        if (error) throw error;
+      map(({ profileData, orgData }) => {
+        if (!profileData) throw new Error('No data returned from update operation');
 
         // Map the response back to our User interface
+        // Create a user object with all the updated fields
         const user: User = {
-          id: data.id,
-          email: data.email,
+          id: profileData.id,
+          email: profileData.email,
           // Map 'name' to 'full_name' in our interface
-          full_name: data.name || data.full_name || 'No Name',
-          role: data.role || 'user',
-          organization_id: data.organization_id,
-          created_at: data.created_at,
-          last_sign_in_at: data.last_sign_in_at || data.created_at
+          full_name: profileData.name || profileData.full_name || 'No Name',
+          role: profileData.role || 'user',
+          organization_id: profileData.organization_id,
+          created_at: profileData.created_at,
+          last_sign_in_at: profileData.last_sign_in_at || profileData.created_at
         };
+
+        // Add subscription and resource information if provided in the update
+        if (userData.subscription_tier !== undefined) {
+          user.subscription_tier = userData.subscription_tier;
+        }
+
+        if (userData.subscription_status !== undefined) {
+          user.subscription_status = userData.subscription_status;
+        }
+
+        if (userData.max_screens !== undefined) {
+          user.max_screens = userData.max_screens;
+        }
+
+        if (userData.max_storage !== undefined) {
+          user.max_storage = userData.max_storage;
+        }
 
         return user;
       }),
