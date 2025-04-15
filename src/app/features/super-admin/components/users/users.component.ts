@@ -7,38 +7,187 @@ import { UserManagementService, User } from '../../services/user-management.serv
     <div class="space-y-6">
       <div class="flex justify-between items-center">
         <h1 class="text-2xl font-bold">User Management</h1>
-        <button
-          (click)="showAddUserDialog = true"
-          class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"
-        >
-          <span class="material-icons mr-1">person_add</span>
-          Add User
+        <div class="flex space-x-2">
+          <!-- Export dropdown -->
+          <div class="relative">
+            <button
+              (click)="showExportMenu = !showExportMenu"
+              class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center"
+              [disabled]="isExporting"
+              [class.opacity-50]="isExporting"
+            >
+              <span class="material-icons mr-1">download</span>
+              {{ isExporting ? 'Exporting...' : 'Export' }}
+            </button>
+            <div *ngIf="showExportMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
+              <div class="py-1">
+                <button
+                  (click)="exportUserData('csv'); showExportMenu = false"
+                  class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  Export as CSV
+                </button>
+                <button
+                  (click)="exportUserData('json'); showExportMenu = false"
+                  class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  Export as JSON
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Add user button -->
+          <button
+            (click)="showAddUserDialog = true"
+            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"
+          >
+            <span class="material-icons mr-1">person_add</span>
+            Add User
+          </button>
+        </div>
+      </div>
+
+      <!-- Error message -->
+      <div *ngIf="errorMessage && !isLoading" class="bg-red-50 text-red-600 p-4 rounded-lg flex items-center">
+        <span class="material-icons mr-2">error</span>
+        {{ errorMessage }}
+        <button (click)="errorMessage = ''" class="ml-auto text-red-500 hover:text-red-700">
+          <span class="material-icons">close</span>
         </button>
       </div>
 
       <div class="bg-white rounded-lg shadow overflow-hidden">
-        <div class="p-4 border-b flex justify-between items-center">
-          <div class="flex items-center space-x-2">
-            <span class="material-icons text-gray-500">search</span>
-            <input
-              type="text"
-              placeholder="Search users..."
-              class="border-none focus:ring-0 text-sm"
-              [(ngModel)]="searchTerm"
-              (keyup.enter)="loadUsers()"
+        <!-- Advanced filters -->
+        <div class="p-4 border-b">
+          <div class="flex flex-wrap items-center gap-4">
+            <!-- Search -->
+            <div class="flex items-center space-x-2 flex-grow">
+              <span class="material-icons text-gray-500">search</span>
+              <input
+                type="text"
+                placeholder="Search users..."
+                class="border-none focus:ring-0 text-sm flex-grow"
+                [(ngModel)]="searchTerm"
+                (keyup.enter)="loadUsers()"
+              >
+            </div>
+
+            <!-- Role filter -->
+            <div>
+              <select
+                class="text-sm border-gray-300 rounded-md"
+                [(ngModel)]="selectedRole"
+                (change)="loadUsers()"
+              >
+                <option value="all">All Roles</option>
+                <option value="admin">Admin</option>
+                <option value="user">User</option>
+                <option value="super_admin">Super Admin</option>
+              </select>
+            </div>
+
+            <!-- Status filter -->
+            <div>
+              <select
+                class="text-sm border-gray-300 rounded-md"
+                [(ngModel)]="selectedStatus"
+                (change)="loadUsers()"
+              >
+                <option value="all">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="pending">Pending</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+
+            <!-- Subscription tier filter -->
+            <div>
+              <select
+                class="text-sm border-gray-300 rounded-md"
+                [(ngModel)]="selectedTier"
+                (change)="loadUsers()"
+              >
+                <option value="all">All Tiers</option>
+                <option value="free">Free</option>
+                <option value="basic">Basic</option>
+                <option value="premium">Premium</option>
+                <option value="enterprise">Enterprise</option>
+              </select>
+            </div>
+
+            <!-- Date filter -->
+            <div>
+              <select
+                class="text-sm border-gray-300 rounded-md"
+                [(ngModel)]="dateFilter"
+                (change)="loadUsers()"
+              >
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="week">Last 7 Days</option>
+                <option value="month">Last 30 Days</option>
+                <option value="year">Last Year</option>
+              </select>
+            </div>
+
+            <!-- Reset filters button -->
+            <button
+              (click)="resetFilters()"
+              class="text-sm text-blue-600 hover:text-blue-800 flex items-center"
             >
+              <span class="material-icons text-sm mr-1">refresh</span>
+              Reset
+            </button>
+          </div>
+        </div>
+
+        <!-- Bulk actions -->
+        <div *ngIf="selectedUsers.length > 0" class="bg-blue-50 p-4 border-b flex justify-between items-center">
+          <div class="text-sm text-blue-800">
+            <span class="font-medium">{{ selectedUsers.length }}</span> users selected
           </div>
           <div class="flex space-x-2">
-            <select
-              class="text-sm border-gray-300 rounded-md"
-              [(ngModel)]="selectedRole"
-              (change)="loadUsers()"
+            <!-- Bulk actions dropdown -->
+            <div class="relative">
+              <button
+                (click)="showBulkActionMenu = !showBulkActionMenu"
+                class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-sm flex items-center"
+              >
+                Bulk Actions
+                <span class="material-icons ml-1 text-sm">arrow_drop_down</span>
+              </button>
+              <div *ngIf="showBulkActionMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
+                <div class="py-1">
+                  <button
+                    (click)="performBulkAction('changeRole'); showBulkActionMenu = false"
+                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Change Role
+                  </button>
+                  <button
+                    (click)="performBulkAction('changeStatus'); showBulkActionMenu = false"
+                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Change Status
+                  </button>
+                  <button
+                    (click)="performBulkAction('delete'); showBulkActionMenu = false"
+                    class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                  >
+                    Delete Selected
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cancel selection -->
+            <button
+              (click)="selectedUsers = []"
+              class="text-gray-600 hover:text-gray-800 px-3 py-1 rounded border border-gray-300 text-sm"
             >
-              <option value="all">All Roles</option>
-              <option value="admin">Admin</option>
-              <option value="user">User</option>
-              <option value="super_admin">Super Admin</option>
-            </select>
+              Cancel
+            </button>
           </div>
         </div>
 
@@ -63,7 +212,17 @@ import { UserManagementService, User } from '../../services/user-management.serv
         <table *ngIf="!isLoading && !errorMessage" class="min-w-full">
           <thead>
             <tr class="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              <th class="px-6 py-3">User & Subscription</th>
+              <th class="px-6 py-3">
+                <div class="flex items-center">
+                  <input
+                    type="checkbox"
+                    class="h-4 w-4 text-blue-600 rounded mr-2"
+                    [checked]="selectedUsers.length === users.length && users.length > 0"
+                    (change)="selectAllUsers()"
+                  >
+                  User & Subscription
+                </div>
+              </th>
               <th class="px-6 py-3">Role</th>
               <th class="px-6 py-3">Organization & Resources</th>
               <th class="px-6 py-3">Last Active</th>
@@ -71,9 +230,15 @@ import { UserManagementService, User } from '../../services/user-management.serv
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr *ngFor="let user of users" class="hover:bg-gray-50">
+            <tr *ngFor="let user of users" class="hover:bg-gray-50" [class.bg-blue-50]="isUserSelected(user.id)">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
+                  <input
+                    type="checkbox"
+                    class="h-4 w-4 text-blue-600 rounded mr-2"
+                    [checked]="isUserSelected(user.id)"
+                    (change)="toggleUserSelection(user.id)"
+                  >
                   <div class="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
                     {{ getInitials(user.full_name || user.email) }}
                   </div>
@@ -275,6 +440,15 @@ import { UserManagementService, User } from '../../services/user-management.serv
         </div>
       </div>
     </div>
+
+    <!-- Bulk Action Dialog -->
+    <app-bulk-action-dialog
+      *ngIf="showBulkActionDialog"
+      [actionType]="bulkActionType"
+      [userCount]="selectedUsers.length"
+      (close)="showBulkActionDialog = false"
+      (applyAction)="applyBulkAction($event)"
+    ></app-bulk-action-dialog>
   `
 })
 export class UsersComponent implements OnInit {
@@ -288,17 +462,36 @@ export class UsersComponent implements OnInit {
   showDeleteConfirmation = false;
   searchTerm = '';
   selectedRole = 'all';
+  selectedStatus = 'all';
+  selectedTier = 'all';
+  dateFilter = 'all';
   totalUsers = 0;
   selectedUser: User | null = null;
   isDeleting = false;
+  selectedUsers: string[] = [];
+  showBulkActionMenu = false;
+  showExportMenu = false;
+  isExporting = false;
+  showBulkActionDialog = false;
+  bulkActionType: 'role' | 'status' = 'role';
 
   constructor(private userService: UserManagementService) {}
 
   loadUsers(): void {
     this.isLoading = true;
     this.errorMessage = '';
+    this.selectedUsers = [];
 
-    this.userService.getUsers(this.currentPage, this.pageSize).subscribe({
+    // Apply filters
+    const filters = {
+      role: this.selectedRole !== 'all' ? this.selectedRole : undefined,
+      status: this.selectedStatus !== 'all' ? this.selectedStatus : undefined,
+      tier: this.selectedTier !== 'all' ? this.selectedTier : undefined,
+      searchTerm: this.searchTerm || undefined,
+      dateFilter: this.dateFilter !== 'all' ? this.dateFilter : undefined
+    };
+
+    this.userService.getUsers(this.currentPage, this.pageSize, filters).subscribe({
       next: (users) => {
         this.users = users;
         this.isLoading = false;
@@ -311,7 +504,7 @@ export class UsersComponent implements OnInit {
     });
 
     // Get total user count for pagination
-    this.userService.getUserCount().subscribe({
+    this.userService.getUserCount(filters).subscribe({
       next: (count) => {
         this.totalUsers = count;
       },
@@ -322,6 +515,15 @@ export class UsersComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.loadUsers();
+  }
+
+  resetFilters(): void {
+    this.searchTerm = '';
+    this.selectedRole = 'all';
+    this.selectedStatus = 'all';
+    this.selectedTier = 'all';
+    this.dateFilter = 'all';
     this.loadUsers();
   }
 
@@ -450,8 +652,198 @@ export class UsersComponent implements OnInit {
       error: (error) => {
         console.error('Error deleting user:', error);
         this.isDeleting = false;
-        // You could show an error message here
+        this.errorMessage = 'Failed to delete user. ' + (error.message || 'Please try again.');
       }
     });
+  }
+
+  // Bulk selection methods
+  toggleUserSelection(userId: string): void {
+    const index = this.selectedUsers.indexOf(userId);
+    if (index === -1) {
+      this.selectedUsers.push(userId);
+    } else {
+      this.selectedUsers.splice(index, 1);
+    }
+  }
+
+  isUserSelected(userId: string): boolean {
+    return this.selectedUsers.includes(userId);
+  }
+
+  selectAllUsers(): void {
+    if (this.selectedUsers.length === this.users.length) {
+      // If all are selected, deselect all
+      this.selectedUsers = [];
+    } else {
+      // Otherwise select all
+      this.selectedUsers = this.users.map(user => user.id);
+    }
+  }
+
+  // Bulk actions
+  performBulkAction(action: string): void {
+    if (this.selectedUsers.length === 0) return;
+
+    switch (action) {
+      case 'delete':
+        this.confirmBulkDelete();
+        break;
+      case 'changeRole':
+        this.bulkActionType = 'role';
+        this.showBulkActionDialog = true;
+        break;
+      case 'changeStatus':
+        this.bulkActionType = 'status';
+        this.showBulkActionDialog = true;
+        break;
+      default:
+        break;
+    }
+  }
+
+  applyBulkAction(action: {type: string, value: string}): void {
+    if (this.selectedUsers.length === 0) return;
+
+    this.isLoading = true;
+
+    // Create an array of observables for each update operation
+    const updateObservables = this.selectedUsers.map(userId => {
+      const userData: Partial<User> = {};
+
+      if (action.type === 'role') {
+        userData.role = action.value;
+      } else if (action.type === 'status') {
+        userData.subscription_status = action.value;
+      }
+
+      return this.userService.updateUser(userId, userData);
+    });
+
+    // Use forkJoin to execute all update operations in parallel
+    import('rxjs').then(({ forkJoin }) => {
+      forkJoin(updateObservables).subscribe({
+        next: (updatedUsers) => {
+          // Update the users in the local array
+          updatedUsers.forEach(updatedUser => {
+            const index = this.users.findIndex(u => u.id === updatedUser.id);
+            if (index !== -1) {
+              this.users[index] = {
+                ...this.users[index],
+                ...updatedUser
+              };
+            }
+          });
+
+          this.isLoading = false;
+          this.showBulkActionDialog = false;
+          this.selectedUsers = [];
+        },
+        error: (error) => {
+          console.error('Error updating users:', error);
+          this.isLoading = false;
+          this.errorMessage = 'Failed to update some users. Please try again.';
+          this.showBulkActionDialog = false;
+        }
+      });
+    });
+  }
+
+  confirmBulkDelete(): void {
+    if (confirm(`Are you sure you want to delete ${this.selectedUsers.length} users? This action cannot be undone.`)) {
+      this.isDeleting = true;
+
+      // Create an array of observables for each delete operation
+      const deleteObservables = this.selectedUsers.map(userId =>
+        this.userService.deleteUser(userId)
+      );
+
+      // Use forkJoin to execute all delete operations in parallel
+      import('rxjs').then(({ forkJoin }) => {
+        forkJoin(deleteObservables).subscribe({
+          next: () => {
+            // Remove the deleted users from the local array
+            this.users = this.users.filter(u => !this.selectedUsers.includes(u.id));
+            this.selectedUsers = [];
+            this.isDeleting = false;
+          },
+          error: (error) => {
+            console.error('Error deleting users:', error);
+            this.isDeleting = false;
+            this.errorMessage = 'Failed to delete some users. Please try again.';
+          }
+        });
+      });
+    }
+  }
+
+  // Export functionality
+  exportUserData(format: string): void {
+    this.isExporting = true;
+
+    // Apply the same filters as the current view
+    const filters = {
+      role: this.selectedRole !== 'all' ? this.selectedRole : undefined,
+      status: this.selectedStatus !== 'all' ? this.selectedStatus : undefined,
+      tier: this.selectedTier !== 'all' ? this.selectedTier : undefined,
+      searchTerm: this.searchTerm || undefined,
+      dateFilter: this.dateFilter !== 'all' ? this.dateFilter : undefined
+    };
+
+    // Get all users matching the current filters
+    this.userService.getAllUsers(filters).subscribe({
+      next: (users) => {
+        if (format === 'csv') {
+          this.downloadCSV(users);
+        } else if (format === 'json') {
+          this.downloadJSON(users);
+        }
+        this.isExporting = false;
+      },
+      error: (error) => {
+        console.error('Error exporting users:', error);
+        this.isExporting = false;
+        this.errorMessage = 'Failed to export users. Please try again.';
+      }
+    });
+  }
+
+  downloadCSV(users: User[]): void {
+    // Create CSV content
+    const headers = ['ID', 'Name', 'Email', 'Role', 'Organization', 'Subscription', 'Status', 'Created', 'Last Active'];
+    const csvRows = [
+      headers.join(','),
+      ...users.map(user => [
+        user.id,
+        `"${user.full_name || 'N/A'}"`,
+        user.email,
+        user.role,
+        `"${user.organization_name || 'N/A'}"`,
+        user.subscription_tier || 'N/A',
+        user.subscription_status || 'N/A',
+        new Date(user.created_at).toLocaleDateString(),
+        user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : 'Never'
+      ].join(','))
+    ];
+
+    const csvContent = csvRows.join('\n');
+    this.downloadFile(csvContent, 'users.csv', 'text/csv');
+  }
+
+  downloadJSON(users: User[]): void {
+    const jsonContent = JSON.stringify(users, null, 2);
+    this.downloadFile(jsonContent, 'users.json', 'application/json');
+  }
+
+  downloadFile(content: string, fileName: string, contentType: string): void {
+    const blob = new Blob([content], { type: contentType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 }

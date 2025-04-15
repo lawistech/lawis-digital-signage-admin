@@ -88,41 +88,92 @@ import { UserManagementService, User, Organization } from '../../services/user-m
             </select>
           </div>
 
-          <!-- User Stats (Read-only) -->
-          <div *ngIf="user.organization_id" class="bg-gray-50 p-4 rounded-lg mt-2">
-            <h3 class="text-sm font-medium text-gray-700 mb-2">User Resources</h3>
+          <!-- Subscription Management -->
+          <div class="border-t mt-4 pt-4">
+            <h3 class="text-sm font-medium text-gray-700 mb-2">Subscription Management</h3>
 
             <div class="grid grid-cols-2 gap-4">
-              <!-- Subscription Info -->
+              <!-- Subscription Tier -->
               <div>
-                <div class="text-xs text-gray-500">Subscription</div>
-                <div class="flex items-center mt-1">
-                  <span class="px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full"
-                        [ngClass]="{
-                          'bg-green-100 text-green-800': user.subscription_status === 'active',
-                          'bg-yellow-100 text-yellow-800': user.subscription_status === 'pending',
-                          'bg-red-100 text-red-800': user.subscription_status === 'inactive'
-                        }">
-                    {{ user.subscription_tier | titlecase }}
-                  </span>
+                <label class="block text-xs text-gray-500 mb-1">Subscription Tier</label>
+                <select
+                  formControlName="subscriptionTier"
+                  class="w-full rounded-md border-gray-300 text-sm"
+                >
+                  <option value="free">Free</option>
+                  <option value="basic">Basic</option>
+                  <option value="premium">Premium</option>
+                  <option value="enterprise">Enterprise</option>
+                </select>
+              </div>
+
+              <!-- Subscription Status -->
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">Subscription Status</label>
+                <select
+                  formControlName="subscriptionStatus"
+                  class="w-full rounded-md border-gray-300 text-sm"
+                >
+                  <option value="active">Active</option>
+                  <option value="pending">Pending</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+
+              <!-- Max Screens -->
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">Max Screens</label>
+                <input
+                  type="number"
+                  formControlName="maxScreens"
+                  class="w-full rounded-md border-gray-300 text-sm"
+                  min="1"
+                  max="100"
+                >
+              </div>
+
+              <!-- Max Storage (GB) -->
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">Max Storage (GB)</label>
+                <input
+                  type="number"
+                  formControlName="maxStorage"
+                  class="w-full rounded-md border-gray-300 text-sm"
+                  min="1"
+                  max="1000"
+                >
+              </div>
+            </div>
+          </div>
+
+          <!-- User Stats (Read-only) -->
+          <div class="bg-gray-50 p-4 rounded-lg mt-4">
+            <h3 class="text-sm font-medium text-gray-700 mb-2">Current Usage</h3>
+
+            <div class="grid grid-cols-2 gap-4">
+              <!-- Screen Usage with Progress Bar -->
+              <div>
+                <div class="text-xs text-gray-500 mb-1">Screen Usage</div>
+                <div class="flex items-center mb-1">
+                  <span class="material-icons text-xs mr-1 text-blue-600">desktop_windows</span>
+                  <span class="text-xs text-gray-700 mr-2">{{ user.screen_count || 0 }}/{{ user.max_screens || 1 }}</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-1.5">
+                  <div class="bg-blue-600 h-1.5 rounded-full"
+                       [style.width.%]="getPercentage(user.screen_count || 0, user.max_screens || 1)"></div>
                 </div>
               </div>
 
-              <!-- Screen Usage -->
+              <!-- Storage Usage with Progress Bar -->
               <div>
-                <div class="text-xs text-gray-500">Screen Usage</div>
-                <div class="flex items-center mt-1">
-                  <span class="material-icons text-xs mr-1 text-blue-500">desktop_windows</span>
-                  <span class="text-sm">{{ user.screen_count || 0 }}/{{ user.max_screens || 1 }}</span>
+                <div class="text-xs text-gray-500 mb-1">Storage Usage</div>
+                <div class="flex items-center mb-1">
+                  <span class="material-icons text-xs mr-1 text-purple-600">storage</span>
+                  <span class="text-xs text-gray-700 mr-2">{{ formatStorage(user.storage_usage) }}/{{ formatStorage(user.max_storage) }}</span>
                 </div>
-              </div>
-
-              <!-- Storage Usage -->
-              <div>
-                <div class="text-xs text-gray-500">Storage Usage</div>
-                <div class="flex items-center mt-1">
-                  <span class="material-icons text-xs mr-1 text-blue-500">storage</span>
-                  <span class="text-sm">{{ formatStorage(user.storage_usage) }}/{{ formatStorage(user.max_storage) }}</span>
+                <div class="w-full bg-gray-200 rounded-full h-1.5">
+                  <div class="bg-purple-600 h-1.5 rounded-full"
+                       [style.width.%]="getPercentage(user.storage_usage || 0, user.max_storage || 1)"></div>
                 </div>
               </div>
 
@@ -132,6 +183,15 @@ import { UserManagementService, User, Organization } from '../../services/user-m
                 <div class="flex items-center mt-1">
                   <span class="material-icons text-xs mr-1 text-blue-500">access_time</span>
                   <span class="text-sm">{{ formatDate(user.last_sign_in_at) }}</span>
+                </div>
+              </div>
+
+              <!-- Last Active Screen -->
+              <div *ngIf="user.last_active_screen">
+                <div class="text-xs text-gray-500">Last Active Screen</div>
+                <div class="flex items-center mt-1">
+                  <span class="material-icons text-xs mr-1 text-blue-500">monitor</span>
+                  <span class="text-sm">{{ user.last_active_screen }}</span>
                 </div>
               </div>
             </div>
@@ -186,8 +246,25 @@ export class EditUserDialogComponent implements OnInit {
       fullName: [this.user.full_name, Validators.required],
       email: [this.user.email],
       role: [this.user.role, Validators.required],
-      organizationId: [this.user.organization_id]
+      organizationId: [this.user.organization_id],
+      subscriptionTier: [this.user.subscription_tier || 'free'],
+      subscriptionStatus: [this.user.subscription_status || 'inactive'],
+      maxScreens: [this.user.max_screens || 1, [Validators.required, Validators.min(1), Validators.max(100)]],
+      maxStorage: [this.convertBytesToGB(this.user.max_storage || 5242880), [Validators.required, Validators.min(1), Validators.max(1000)]]
     });
+  }
+
+  getPercentage(current: number, max: number): number {
+    if (max === 0) return 0;
+    return Math.min(Math.round((current / max) * 100), 100);
+  }
+
+  convertBytesToGB(bytes: number): number {
+    return Math.round(bytes / (1024 * 1024 * 1024));
+  }
+
+  convertGBToBytes(gb: number): number {
+    return gb * 1024 * 1024 * 1024;
   }
 
   loadOrganizations(): void {
@@ -212,7 +289,11 @@ export class EditUserDialogComponent implements OnInit {
     const userData: Partial<User> = {
       full_name: this.userForm.value.fullName,
       role: this.userForm.value.role,
-      organization_id: this.userForm.value.organizationId
+      organization_id: this.userForm.value.organizationId,
+      subscription_tier: this.userForm.value.subscriptionTier,
+      subscription_status: this.userForm.value.subscriptionStatus,
+      max_screens: this.userForm.value.maxScreens,
+      max_storage: this.convertGBToBytes(this.userForm.value.maxStorage)
     };
 
     this.userService.updateUser(this.user.id, userData).subscribe({
@@ -226,7 +307,11 @@ export class EditUserDialogComponent implements OnInit {
           // Use the updated user's full_name (which might come from the 'name' field in the database)
           full_name: updatedUser.full_name,
           role: updatedUser.role,
-          organization_id: updatedUser.organization_id
+          organization_id: updatedUser.organization_id,
+          subscription_tier: userData.subscription_tier,
+          subscription_status: userData.subscription_status,
+          max_screens: userData.max_screens,
+          max_storage: userData.max_storage
         };
 
         this.userUpdated.emit(completeUser);

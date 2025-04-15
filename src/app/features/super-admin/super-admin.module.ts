@@ -22,6 +22,7 @@ import { ActivityLogComponent } from './components/activity-log/activity-log.com
 // User Management Components
 import { AddUserDialogComponent } from './components/users/add-user-dialog.component';
 import { EditUserDialogComponent } from './components/users/edit-user-dialog.component';
+import { BulkActionDialogComponent } from './components/users/bulk-action-dialog.component';
 
 // Additional Services
 import { UserManagementService } from './services/user-management.service';
@@ -50,7 +51,8 @@ const routes: Routes = [
     BillingComponent,
     SettingsComponent,
     AddUserDialogComponent,
-    EditUserDialogComponent
+    EditUserDialogComponent,
+    BulkActionDialogComponent
   ],
   imports: [
     CommonModule,
