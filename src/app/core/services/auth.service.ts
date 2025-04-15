@@ -57,11 +57,11 @@ export class AuthService {
 
       // Update the current user
       this.currentUserSubject.next(data.user);
-      
+
       return { success: true };
     } catch (error: any) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         message: error.message || 'Failed to sign in'
       };
     }
@@ -84,8 +84,8 @@ export class AuthService {
         throw error;
       }
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: 'Registration successful! Please check your email for verification.'
       };
     } catch (error: any) {
@@ -99,8 +99,8 @@ export class AuthService {
       } else {
         message = error.message || 'Failed to sign up';
       }
-      return { 
-        success: false, 
+      return {
+        success: false,
         message: message
       };
     }
@@ -119,13 +119,13 @@ export class AuthService {
         throw error;
       }
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: 'Password reset link has been sent to your email'
       };
     } catch (error: any) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         message: error.message || 'Failed to send password reset email'
       };
     }
@@ -141,13 +141,13 @@ export class AuthService {
         throw error;
       }
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: 'Password updated successfully'
       };
     } catch (error: any) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         message: error.message || 'Failed to update password'
       };
     }
@@ -176,5 +176,16 @@ export class AuthService {
   // Get current user
   getCurrentUser(): User | null {
     return this.currentUserSubject.value;
+  }
+
+  // Check if user has a specific role
+  hasRole(role: string): boolean {
+    const user = this.getCurrentUser();
+    if (!user) return false;
+
+    // Check if user has the role in user metadata
+    // This assumes the role is stored in user.user_metadata.role
+    // Use bracket notation to access the role property
+    return user.user_metadata?.['role'] === role;
   }
 }

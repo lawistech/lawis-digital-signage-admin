@@ -3,7 +3,6 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from './core/services/auth.service';
-import { TaskBoardComponent } from './features/tasks/task-board/task-board.component';
 import { RouterModule } from '@angular/router';
 
 
@@ -12,7 +11,7 @@ import { RouterModule } from '@angular/router';
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css'],
   standalone: true,
-  imports: [CommonModule, TaskBoardComponent, RouterModule]
+  imports: [CommonModule, RouterModule]
 })
 export class AppComponent implements OnInit {
   showSidebar = true;
@@ -21,16 +20,18 @@ export class AppComponent implements OnInit {
     public authService: AuthService,
     private router: Router,
   ) {
-    // Hide sidebar on login/register pages
+    // Hide sidebar on login/register pages and super-admin pages
     this.router.events.subscribe(() => {
       const currentRoute = this.router.url;
-      this.showSidebar = !(currentRoute.includes('/login') || currentRoute.includes('/register'));
+      this.showSidebar = !(currentRoute.includes('/login') ||
+                          currentRoute.includes('/register') ||
+                          currentRoute.includes('/super-admin'));
     });
   }
-  
+
   ngOnInit(): void {
   }
-  
+
   // Add this getter method
   get userInitial(): string {
     const user = this.authService.getCurrentUser();

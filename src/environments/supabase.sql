@@ -1,71 +1,86 @@
 -- NOTE: Run these SQL commands in your Supabase SQL Editor
 
--- Profiles table (extended user info)
-CREATE TABLE profiles (
-  id UUID REFERENCES auth.users(id) PRIMARY KEY,
-  email TEXT NOT NULL,
-  full_name TEXT,
-  avatar_url TEXT,
-  role TEXT DEFAULT 'user',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- Drop existing tables if needed (uncomment if you want to start fresh)
+-- DROP TABLE IF EXISTS organization_subscriptions CASCADE;
+-- DROP TABLE IF EXISTS profiles CASCADE;
+-- DROP TABLE IF EXISTS organizations CASCADE;
 
--- Companies table
-CREATE TABLE companies (
+-- Customer organizations table (create this first)
+CREATE TABLE IF NOT EXISTS organizations (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   name TEXT NOT NULL,
-  website TEXT,
-  industry TEXT,
-  address TEXT,
-  notes TEXT,
+  subscription_tier TEXT NOT NULL DEFAULT 'basic',
+  subscription_status TEXT NOT NULL DEFAULT 'active',
+  max_screens INTEGER NOT NULL DEFAULT 1,
+  max_users INTEGER NOT NULL DEFAULT 1,
+  settings JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Contacts table
-CREATE TABLE contacts (
+-- Add organization_id column to profiles if it doesn't exist
+DO $$ 
+BEGIN 
+  IF NOT EXISTS (
+    SELECT 1 
+    FROM information_schema.columns 
+    WHERE table_name = 'profiles' 
+    AND column_name = 'organization_id'
+  ) THEN
+    ALTER TABLE profiles ADD COLUMN organization_id UUID;
+  END IF;
+END $$;
+
+-- Add foreign key constraint if it doesn't exist
+DO $$ 
+BEGIN 
+  IF NOT EXISTS (
+    SELECT 1 
+    FROM information_schema.table_constraints 
+    WHERE constraint_name = 'fk_organization'
+  ) THEN
+    ALTER TABLE profiles 
+    ADD CONSTRAINT fk_organization 
+    FOREIGN KEY (organization_id) 
+    REFERENCES organizations(id);
+  END IF;
+END $$;
+
+-- Organization billing/subscription table
+CREATE TABLE IF NOT EXISTS organization_subscriptions (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  first_name TEXT NOT NULL,
-  last_name TEXT NOT NULL,
-  email TEXT,
-  phone TEXT,
-  job_title TEXT,
-  company_id UUID REFERENCES companies(id) ON DELETE SET NULL,
-  notes TEXT,
-  tags TEXT[],
-  created_by UUID REFERENCES auth.users(id),
+  organization_id UUID REFERENCES organizations(id),
+  plan_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  current_period_start TIMESTAMPTZ,
+  current_period_end TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Calls table
-CREATE TABLE calls (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  contact_id UUID REFERENCES contacts(id) ON DELETE CASCADE,
-  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  scheduled_at TIMESTAMPTZ,
-  completed_at TIMESTAMPTZ,
-  duration_minutes INTEGER,
-  method TEXT DEFAULT 'phone', -- phone, webex, etc.
-  status TEXT DEFAULT 'scheduled', -- scheduled, completed, missed, cancelled
-  reason TEXT NOT NULL,
-  notes TEXT,
-  recording_url TEXT,
-  follow_up_date TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Row Level Security (RLS) Policies
-
--- Enable RLS on tables
+-- RLS Policies
+ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE organization_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE companies ENABLE ROW LEVEL SECURITY;
-ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE calls ENABLE ROW LEVEL SECURITY;
 
--- Profiles policy
+-- Drop existing policies to avoid conflicts
+DROP POLICY IF EXISTS "Super admin can manage organizations" ON organizations;
+DROP POLICY IF EXISTS "Super admin can manage subscriptions" ON organization_subscriptions;
+DROP POLICY IF EXISTS "Users can view all profiles" ON profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
+
+-- Super admin can manage everything
+CREATE POLICY "Super admin can manage organizations" 
+  ON organizations FOR ALL 
+  TO authenticated 
+  USING (auth.jwt() ->> 'role' = 'super_admin');
+
+CREATE POLICY "Super admin can manage subscriptions" 
+  ON organization_subscriptions FOR ALL 
+  TO authenticated 
+  USING (auth.jwt() ->> 'role' = 'super_admin');
+
+-- Profiles policies
 CREATE POLICY "Users can view all profiles" 
   ON profiles FOR SELECT 
   TO authenticated 
@@ -76,57 +91,7 @@ CREATE POLICY "Users can update own profile"
   TO authenticated 
   USING (id = auth.uid());
 
--- Companies policy
-CREATE POLICY "Users can view all companies" 
-  ON companies FOR SELECT 
-  TO authenticated 
-  USING (true);
-
-CREATE POLICY "Users can insert companies" 
-  ON companies FOR INSERT 
-  TO authenticated 
-  WITH CHECK (true);
-
-CREATE POLICY "Users can update companies" 
-  ON companies FOR UPDATE 
-  TO authenticated 
-  USING (true);
-
--- Contacts policy
-CREATE POLICY "Users can view all contacts" 
-  ON contacts FOR SELECT 
-  TO authenticated 
-  USING (true);
-
-CREATE POLICY "Users can insert contacts" 
-  ON contacts FOR INSERT 
-  TO authenticated 
-  WITH CHECK (true);
-
-CREATE POLICY "Users can update contacts" 
-  ON contacts FOR UPDATE 
-  TO authenticated 
-  USING (true);
-
--- Calls policy
-CREATE POLICY "Users can view all calls" 
-  ON calls FOR SELECT 
-  TO authenticated 
-  USING (true);
-
-CREATE POLICY "Users can insert calls" 
-  ON calls FOR INSERT 
-  TO authenticated 
-  WITH CHECK (true);
-
-CREATE POLICY "Users can update calls" 
-  ON calls FOR UPDATE 
-  TO authenticated 
-  USING (true);
-
 -- Triggers for updated_at
-
--- Function to update updated_at
 CREATE OR REPLACE FUNCTION update_timestamp()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -135,21 +100,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Add triggers
+-- Drop existing trigger if it exists
+DROP TRIGGER IF EXISTS set_timestamp_profiles ON profiles;
+
+-- Add trigger for profiles
 CREATE TRIGGER set_timestamp_profiles
 BEFORE UPDATE ON profiles
-FOR EACH ROW EXECUTE PROCEDURE update_timestamp();
-
-CREATE TRIGGER set_timestamp_companies
-BEFORE UPDATE ON companies
-FOR EACH ROW EXECUTE PROCEDURE update_timestamp();
-
-CREATE TRIGGER set_timestamp_contacts
-BEFORE UPDATE ON contacts
-FOR EACH ROW EXECUTE PROCEDURE update_timestamp();
-
-CREATE TRIGGER set_timestamp_calls
-BEFORE UPDATE ON calls
 FOR EACH ROW EXECUTE PROCEDURE update_timestamp();
 
 -- Function to handle new user registrations
@@ -162,7 +118,72 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Drop existing trigger if it exists
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
 -- Trigger after user signup
 CREATE TRIGGER on_auth_user_created
 AFTER INSERT ON auth.users
 FOR EACH ROW EXECUTE PROCEDURE handle_new_user();
+
+-- Stats functions for super admin
+CREATE OR REPLACE FUNCTION get_organization_stats()
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF (auth.jwt() ->> 'role' != 'super_admin') THEN
+    RAISE EXCEPTION 'Not authorized';
+  END IF;
+  
+  RETURN (
+    SELECT json_build_object(
+      'total', COUNT(*),
+      'active', COUNT(*) FILTER (WHERE subscription_status = 'active'),
+      'totalUsers', SUM(max_users)
+    )
+    FROM organizations
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION get_screen_stats()
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF (auth.jwt() ->> 'role' != 'super_admin') THEN
+    RAISE EXCEPTION 'Not authorized';
+  END IF;
+  
+  RETURN (
+    SELECT json_build_object(
+      'total', COUNT(*),
+      'active', COUNT(*) FILTER (WHERE status = 'active')
+    )
+    FROM screens
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION get_revenue_stats()
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF (auth.jwt() ->> 'role' != 'super_admin') THEN
+    RAISE EXCEPTION 'Not authorized';
+  END IF;
+  
+  RETURN (
+    SELECT json_build_object(
+      'monthly', COALESCE(SUM(amount), 0)
+    )
+    FROM organization_subscriptions
+    WHERE created_at >= date_trunc('month', CURRENT_DATE)
+  );
+END;
+$$;

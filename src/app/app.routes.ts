@@ -1,12 +1,11 @@
 // src/app/app.routes.ts
 import { Routes } from '@angular/router';
-import { TaskBoardComponent } from './features/tasks/task-board/task-board.component';
 import { AuthGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: 'tasks',
+    redirectTo: 'super-admin',
     pathMatch: 'full'
   },
   {
@@ -14,12 +13,17 @@ export const routes: Routes = [
     loadChildren: () => import('./features/auth/auth.module').then(m => m.AuthModule)
   },
   {
-    path: 'tasks',
-    component: TaskBoardComponent,
-    canActivate: [AuthGuard],
+    path: 'super-admin',
+    loadChildren: () => import('./features/super-admin/super-admin.module').then(m => m.SuperAdminModule),
+    canActivate: [AuthGuard]
+  },
+  {
+    path: 'unauthorized',
+    loadComponent: () => import('./shared/components/unauthorized/unauthorized.component')
+      .then(m => m.UnauthorizedComponent)
   },
   {
     path: '**',
-    redirectTo: 'tasks'
+    redirectTo: 'super-admin'
   }
 ];
