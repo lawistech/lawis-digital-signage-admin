@@ -9,6 +9,7 @@ import { SuperAdminDashboardComponent } from './components/dashboard/dashboard.c
 import { UsersComponent } from './components/users/users.component';
 import { BillingComponent } from './components/billing/billing.component';
 import { SettingsComponent } from './components/settings/settings.component';
+import { ArchiveComponent } from './components/archive/archive.component';
 
 // Services
 import { SuperAdminStatsService } from './services/super-admin-stats.service';
@@ -37,7 +38,8 @@ const routes: Routes = [
       { path: 'dashboard', component: SuperAdminDashboardComponent },
       { path: 'users', component: UsersComponent },
       { path: 'billing', component: BillingComponent },
-      { path: 'settings', component: SettingsComponent }
+      { path: 'settings', component: SettingsComponent },
+      { path: 'archive', component: ArchiveComponent }
     ]
   }
 ];
@@ -50,6 +52,7 @@ const routes: Routes = [
     UsersComponent,
     BillingComponent,
     SettingsComponent,
+    ArchiveComponent,
     AddUserDialogComponent,
     EditUserDialogComponent,
     BulkActionDialogComponent

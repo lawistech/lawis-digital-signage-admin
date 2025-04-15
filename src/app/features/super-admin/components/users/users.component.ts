@@ -213,15 +213,7 @@ import { UserManagementService, User } from '../../services/user-management.serv
                     </div>
                   </button>
                   <div class="border-t border-slate-200 my-1"></div>
-                  <button
-                    (click)="performBulkAction('delete'); showBulkActionMenu = false"
-                    class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-150"
-                  >
-                    <div class="flex items-center">
-                      <span class="material-icons text-red-500 mr-2 text-sm">delete</span>
-                      Delete Selected
-                    </div>
-                  </button>
+
                 </div>
               </div>
             </div>
@@ -403,13 +395,7 @@ import { UserManagementService, User } from '../../services/user-management.serv
                   <span class="material-icons text-sm mr-1">edit</span>
                   Edit
                 </button>
-                <button
-                  (click)="confirmDeleteUser(user)"
-                  class="text-red-600 hover:text-red-900 flex items-center"
-                >
-                  <span class="material-icons text-sm mr-1">delete</span>
-                  Delete
-                </button>
+
               </td>
             </tr>
 
@@ -468,38 +454,7 @@ import { UserManagementService, User } from '../../services/user-management.serv
       (userUpdated)="onUserUpdated($event)"
     ></app-edit-user-dialog>
 
-    <!-- Delete Confirmation Dialog -->
-    <div *ngIf="showDeleteConfirmation" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-xl font-bold">Confirm Delete</h2>
-          <button (click)="showDeleteConfirmation = false" class="text-gray-500 hover:text-gray-700">
-            <span class="material-icons">close</span>
-          </button>
-        </div>
 
-        <p class="mb-4">Are you sure you want to delete the user <strong>{{ selectedUser?.full_name || selectedUser?.email }}</strong>?</p>
-        <p class="mb-6 text-red-600">This action cannot be undone.</p>
-
-        <div class="flex justify-end space-x-2">
-          <button
-            (click)="showDeleteConfirmation = false"
-            class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            (click)="deleteUser()"
-            class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-            [disabled]="isDeleting"
-            [class.opacity-50]="isDeleting"
-          >
-            <span *ngIf="isDeleting" class="material-icons animate-spin mr-1 text-sm">refresh</span>
-            {{ isDeleting ? 'Deleting...' : 'Delete User' }}
-          </button>
-        </div>
-      </div>
-    </div>
 
     <!-- Bulk Action Dialog -->
     <app-bulk-action-dialog
@@ -519,7 +474,7 @@ export class UsersComponent implements OnInit {
   pageSize = 10;
   showAddUserDialog = false;
   showEditUserDialog = false;
-  showDeleteConfirmation = false;
+
   searchTerm = '';
   selectedRole = 'all';
   selectedStatus = 'all';
@@ -527,7 +482,7 @@ export class UsersComponent implements OnInit {
   dateFilter = 'all';
   totalUsers = 0;
   selectedUser: User | null = null;
-  isDeleting = false;
+
   selectedUsers: string[] = [];
   showBulkActionMenu = false;
   showExportMenu = false;
@@ -691,31 +646,7 @@ export class UsersComponent implements OnInit {
     this.selectedUser = null;
   }
 
-  confirmDeleteUser(user: User): void {
-    this.selectedUser = user;
-    this.showDeleteConfirmation = true;
-  }
 
-  deleteUser(): void {
-    if (!this.selectedUser) return;
-
-    this.isDeleting = true;
-
-    this.userService.deleteUser(this.selectedUser.id).subscribe({
-      next: () => {
-        // Remove the user from the local array
-        this.users = this.users.filter(u => u.id !== this.selectedUser?.id);
-        this.isDeleting = false;
-        this.showDeleteConfirmation = false;
-        this.selectedUser = null;
-      },
-      error: (error) => {
-        console.error('Error deleting user:', error);
-        this.isDeleting = false;
-        this.errorMessage = 'Failed to delete user. ' + (error.message || 'Please try again.');
-      }
-    });
-  }
 
   // Bulk selection methods
   toggleUserSelection(userId: string): void {
@@ -746,9 +677,7 @@ export class UsersComponent implements OnInit {
     if (this.selectedUsers.length === 0) return;
 
     switch (action) {
-      case 'delete':
-        this.confirmBulkDelete();
-        break;
+
       case 'changeRole':
         this.bulkActionType = 'role';
         this.showBulkActionDialog = true;
@@ -809,33 +738,7 @@ export class UsersComponent implements OnInit {
     });
   }
 
-  confirmBulkDelete(): void {
-    if (confirm(`Are you sure you want to delete ${this.selectedUsers.length} users? This action cannot be undone.`)) {
-      this.isDeleting = true;
 
-      // Create an array of observables for each delete operation
-      const deleteObservables = this.selectedUsers.map(userId =>
-        this.userService.deleteUser(userId)
-      );
-
-      // Use forkJoin to execute all delete operations in parallel
-      import('rxjs').then(({ forkJoin }) => {
-        forkJoin(deleteObservables).subscribe({
-          next: () => {
-            // Remove the deleted users from the local array
-            this.users = this.users.filter(u => !this.selectedUsers.includes(u.id));
-            this.selectedUsers = [];
-            this.isDeleting = false;
-          },
-          error: (error) => {
-            console.error('Error deleting users:', error);
-            this.isDeleting = false;
-            this.errorMessage = 'Failed to delete some users. Please try again.';
-          }
-        });
-      });
-    }
-  }
 
   // Export functionality
   exportUserData(format: string): void {

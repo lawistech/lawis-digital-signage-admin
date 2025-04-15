@@ -45,6 +45,13 @@ import { RouterOutlet } from '@angular/router';
               <span class="material-icons mr-3 group-hover:text-indigo-600">settings</span>
               <span class="font-medium">Settings</span>
             </a>
+
+            <a routerLink="/super-admin/archive"
+               routerLinkActive="bg-indigo-50 text-indigo-700 border-l-4 border-indigo-600"
+               class="flex items-center px-4 py-3 rounded-md hover:bg-slate-50 transition-all duration-200 group">
+              <span class="material-icons mr-3 group-hover:text-indigo-600">archive</span>
+              <span class="font-medium">Archive</span>
+            </a>
           </nav>
         </div>
 
