@@ -5,28 +5,34 @@ import { UserManagementService, Organization } from '../../services/user-managem
 @Component({
   selector: 'app-add-user-dialog',
   template: `
-    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-xl font-bold">Add New User</h2>
-          <button (click)="onCancel()" class="text-gray-500 hover:text-gray-700">
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto p-4">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
+        <!-- Header with improved styling - fixed at top -->
+        <div class="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10">
+          <div class="flex items-center">
+            <span class="material-icons text-blue-600 mr-2">person_add</span>
+            <h2 class="text-xl font-bold text-gray-800">Add New User</h2>
+          </div>
+          <button (click)="onCancel()" class="text-gray-500 hover:text-gray-700 transition-colors">
             <span class="material-icons">close</span>
           </button>
         </div>
 
-        <!-- Error message -->
-        <div *ngIf="errorMessage" class="mb-4 bg-red-50 text-red-600 p-3 rounded-lg flex items-center">
-          <span class="material-icons mr-2">error</span>
-          {{ errorMessage }}
-        </div>
+        <!-- Scrollable content area -->
+        <div class="overflow-y-auto p-6 pt-0">
+          <!-- Error message -->
+          <div *ngIf="errorMessage" class="mb-6 bg-red-50 text-red-600 p-4 rounded-lg flex items-center border-l-4 border-red-500 shadow-sm">
+            <span class="material-icons mr-3 text-red-500">error</span>
+            <span>{{ errorMessage }}</span>
+          </div>
 
-        <form [formGroup]="userForm" (ngSubmit)="onSubmit()" class="space-y-4">
+          <form [formGroup]="userForm" (ngSubmit)="onSubmit()" class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">
               Full Name
             </label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               formControlName="fullName"
               class="w-full rounded-md border-gray-300"
               [class.border-red-500]="userForm.get('fullName')?.invalid && userForm.get('fullName')?.touched"
@@ -40,8 +46,8 @@ import { UserManagementService, Organization } from '../../services/user-managem
             <label class="block text-sm font-medium text-gray-700 mb-1">
               Email
             </label>
-            <input 
-              type="email" 
+            <input
+              type="email"
               formControlName="email"
               class="w-full rounded-md border-gray-300"
               [class.border-red-500]="userForm.get('email')?.invalid && userForm.get('email')?.touched"
@@ -55,8 +61,8 @@ import { UserManagementService, Organization } from '../../services/user-managem
             <label class="block text-sm font-medium text-gray-700 mb-1">
               Password
             </label>
-            <input 
-              type="password" 
+            <input
+              type="password"
               formControlName="password"
               class="w-full rounded-md border-gray-300"
               [class.border-red-500]="userForm.get('password')?.invalid && userForm.get('password')?.touched"
@@ -70,7 +76,7 @@ import { UserManagementService, Organization } from '../../services/user-managem
             <label class="block text-sm font-medium text-gray-700 mb-1">
               Role
             </label>
-            <select 
+            <select
               formControlName="role"
               class="w-full rounded-md border-gray-300"
               [class.border-red-500]="userForm.get('role')?.invalid && userForm.get('role')?.touched"
@@ -88,7 +94,7 @@ import { UserManagementService, Organization } from '../../services/user-managem
             <label class="block text-sm font-medium text-gray-700 mb-1">
               Organization
             </label>
-            <select 
+            <select
               formControlName="organizationId"
               class="w-full rounded-md border-gray-300"
             >
@@ -97,25 +103,28 @@ import { UserManagementService, Organization } from '../../services/user-managem
             </select>
           </div>
 
-          <div class="flex justify-end space-x-2 pt-4">
-            <button 
+          <div class="flex justify-end space-x-3 pt-4 mt-4 border-t bg-white pb-2">
+            <button
               type="button"
               (click)="onCancel()"
-              class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
             >
               Cancel
             </button>
-            <button 
+            <button
               type="submit"
               [disabled]="userForm.invalid || isSubmitting"
-              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               [class.opacity-50]="userForm.invalid || isSubmitting"
             >
-              <span *ngIf="isSubmitting" class="material-icons animate-spin mr-1 text-sm">refresh</span>
-              {{ isSubmitting ? 'Creating...' : 'Create User' }}
+              <div class="flex items-center">
+                <span *ngIf="isSubmitting" class="material-icons animate-spin mr-2 text-sm">refresh</span>
+                {{ isSubmitting ? 'Creating...' : 'Create User' }}
+              </div>
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   `
@@ -123,7 +132,7 @@ import { UserManagementService, Organization } from '../../services/user-managem
 export class AddUserDialogComponent implements OnInit {
   @Output() close = new EventEmitter<void>();
   @Output() userCreated = new EventEmitter<any>();
-  
+
   userForm: FormGroup;
   organizations: Organization[] = [];
   isSubmitting = false;
@@ -182,6 +191,12 @@ export class AddUserDialogComponent implements OnInit {
         this.isSubmitting = false;
         console.error('Error creating user:', error);
         this.errorMessage = error.message || 'Failed to create user. Please try again.';
+
+        // Scroll to the top of the form to show the error message
+        const contentElement = document.querySelector('.overflow-y-auto');
+        if (contentElement) {
+          contentElement.scrollTop = 0;
+        }
       }
     });
   }

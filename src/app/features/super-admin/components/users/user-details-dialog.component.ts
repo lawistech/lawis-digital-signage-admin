@@ -4,14 +4,21 @@ import { User } from '../../services/user-management.service';
 @Component({
   selector: 'app-user-details-dialog',
   template: `
-    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-xl font-bold">User Details</h2>
-          <button (click)="onClose()" class="text-gray-500 hover:text-gray-700">
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto p-4">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <!-- Header with improved styling - fixed at top -->
+        <div class="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10">
+          <div class="flex items-center">
+            <span class="material-icons text-blue-600 mr-2">person</span>
+            <h2 class="text-xl font-bold text-gray-800">User Details</h2>
+          </div>
+          <button (click)="onClose()" class="text-gray-500 hover:text-gray-700 transition-colors">
             <span class="material-icons">close</span>
           </button>
         </div>
+
+        <!-- Scrollable content area -->
+        <div class="overflow-y-auto p-6 pt-0">
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <!-- User Profile Section -->
@@ -36,8 +43,8 @@ import { User } from '../../services/user-management.service';
               <div class="text-xs text-gray-500">
                 Last active {{ getTimeAgo(user.last_sign_in_at) }}
               </div>
-              <button 
-                (click)="onEdit()" 
+              <button
+                (click)="onEdit()"
                 class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center text-sm"
               >
                 <span class="material-icons text-sm mr-1">edit</span>
@@ -50,7 +57,7 @@ import { User } from '../../services/user-management.service';
           <div class="md:col-span-2">
             <div class="bg-white p-4 rounded-lg border border-gray-200 mb-4">
               <h3 class="text-lg font-medium text-gray-900 mb-3">Subscription Details</h3>
-              
+
               <div class="flex items-center mb-3">
                 <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full mr-2"
                       [ngClass]="{
@@ -85,7 +92,7 @@ import { User } from '../../services/user-management.service';
 
             <div class="bg-white p-4 rounded-lg border border-gray-200">
               <h3 class="text-lg font-medium text-gray-900 mb-3">Resource Usage</h3>
-              
+
               <!-- Screen Usage with Progress Bar -->
               <div class="mb-4">
                 <div class="flex items-center justify-between mb-1">
@@ -96,7 +103,7 @@ import { User } from '../../services/user-management.service';
                   <span class="text-sm text-gray-600">{{ user.screen_count || 0 }}/{{ user.max_screens || 1 }}</span>
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-2">
-                  <div class="bg-blue-600 h-2 rounded-full" 
+                  <div class="bg-blue-600 h-2 rounded-full"
                        [style.width.%]="getPercentage(user.screen_count || 0, user.max_screens || 1)"></div>
                 </div>
               </div>
@@ -132,13 +139,14 @@ import { User } from '../../services/user-management.service';
           </div>
         </div>
 
-        <div class="flex justify-end mt-6">
-          <button 
-            (click)="onClose()" 
-            class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+        <div class="flex justify-end mt-6 pt-4 border-t">
+          <button
+            (click)="onClose()"
+            class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
           >
             Close
           </button>
+        </div>
         </div>
       </div>
     </div>

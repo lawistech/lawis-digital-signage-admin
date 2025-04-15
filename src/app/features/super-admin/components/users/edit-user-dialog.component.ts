@@ -1,14 +1,14 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { UserManagementService, User, Organization } from '../../services/user-management.service';
+import { UserManagementService, User } from '../../services/user-management.service';
 
 @Component({
   selector: 'app-edit-user-dialog',
   template: `
     <div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto p-4">
-      <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl">
-        <!-- Header with improved styling -->
-        <div class="flex justify-between items-center mb-6 border-b pb-4">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <!-- Header with improved styling - fixed at top -->
+        <div class="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10">
           <div class="flex items-center">
             <span class="material-icons text-blue-600 mr-2">person</span>
             <h2 class="text-xl font-bold text-gray-800">Edit User</h2>
@@ -18,18 +18,20 @@ import { UserManagementService, User, Organization } from '../../services/user-m
           </button>
         </div>
 
-        <!-- Status messages with improved styling -->
-        <div *ngIf="errorMessage" class="mb-6 bg-red-50 text-red-600 p-4 rounded-lg flex items-center border-l-4 border-red-500 shadow-sm">
-          <span class="material-icons mr-3 text-red-500">error</span>
-          <span>{{ errorMessage }}</span>
-        </div>
+        <!-- Scrollable content area -->
+        <div class="overflow-y-auto p-6 pt-0">
+          <!-- Status messages with improved styling -->
+          <div *ngIf="errorMessage" class="mb-6 bg-red-50 text-red-600 p-4 rounded-lg flex items-center border-l-4 border-red-500 shadow-sm">
+            <span class="material-icons mr-3 text-red-500">error</span>
+            <span>{{ errorMessage }}</span>
+          </div>
 
-        <div *ngIf="successMessage" class="mb-6 bg-green-50 text-green-600 p-4 rounded-lg flex items-center border-l-4 border-green-500 shadow-sm">
-          <span class="material-icons mr-3 text-green-500">check_circle</span>
-          <span>{{ successMessage }}</span>
-        </div>
+          <div *ngIf="successMessage" class="mb-6 bg-green-50 text-green-600 p-4 rounded-lg flex items-center border-l-4 border-green-500 shadow-sm">
+            <span class="material-icons mr-3 text-green-500">check_circle</span>
+            <span>{{ successMessage }}</span>
+          </div>
 
-        <form [formGroup]="userForm" (ngSubmit)="onSubmit()" class="space-y-6">
+          <form [formGroup]="userForm" (ngSubmit)="onSubmit()" class="space-y-6">
           <!-- Two-column layout for basic info -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Left column - Basic Info -->
@@ -86,20 +88,6 @@ import { UserManagementService, User, Organization } from '../../services/user-m
                 <div *ngIf="userForm.get('role')?.invalid && userForm.get('role')?.touched" class="text-red-500 text-sm mt-1">
                   Role is required
                 </div>
-              </div>
-
-              <!-- Organization -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Organization
-                </label>
-                <select
-                  formControlName="organizationId"
-                  class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-all"
-                >
-                  <option [value]="null">None</option>
-                  <option *ngFor="let org of organizations" [value]="org.id">{{ org.name }}</option>
-                </select>
               </div>
             </div>
 
@@ -232,7 +220,7 @@ import { UserManagementService, User, Organization } from '../../services/user-m
           </div>
 
           <!-- Action buttons with improved styling -->
-          <div class="flex justify-end space-x-3 pt-4 border-t">
+          <div class="flex justify-end space-x-3 pt-4 mt-4 border-t bg-white pb-2">
             <button
               type="button"
               (click)="onCancel()"
@@ -253,6 +241,7 @@ import { UserManagementService, User, Organization } from '../../services/user-m
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   `
@@ -263,7 +252,7 @@ export class EditUserDialogComponent implements OnInit {
   @Output() userUpdated = new EventEmitter<User>();
 
   userForm!: FormGroup;
-  organizations: Organization[] = [];
+
   isSubmitting = false;
   errorMessage = '';
   successMessage = '';
@@ -275,7 +264,6 @@ export class EditUserDialogComponent implements OnInit {
 
   ngOnInit(): void {
     this.initForm();
-    this.loadOrganizations();
   }
 
   initForm(): void {
@@ -283,7 +271,6 @@ export class EditUserDialogComponent implements OnInit {
       fullName: [this.user.full_name, Validators.required],
       email: [this.user.email],
       role: [this.user.role, Validators.required],
-      organizationId: [this.user.organization_id],
       subscriptionTier: [this.user.subscription_tier || 'free'],
       subscriptionStatus: [this.user.subscription_status || 'inactive'],
       maxScreens: [this.user.max_screens || 1, [Validators.required, Validators.min(1), Validators.max(100)]],
@@ -304,18 +291,6 @@ export class EditUserDialogComponent implements OnInit {
     return gb * 1024 * 1024 * 1024;
   }
 
-  loadOrganizations(): void {
-    this.userService.getOrganizations().subscribe({
-      next: (orgs) => {
-        this.organizations = orgs;
-      },
-      error: (error) => {
-        console.error('Error loading organizations:', error);
-        this.errorMessage = 'Failed to load organizations. Some features may be limited.';
-      }
-    });
-  }
-
   onSubmit(): void {
     if (this.userForm.invalid) {
       // Mark all form controls as touched to show validation errors
@@ -334,7 +309,6 @@ export class EditUserDialogComponent implements OnInit {
     const userData: Partial<User> = {
       full_name: this.userForm.value.fullName,
       role: this.userForm.value.role,
-      organization_id: this.userForm.value.organizationId,
       subscription_tier: this.userForm.value.subscriptionTier,
       subscription_status: this.userForm.value.subscriptionStatus,
       max_screens: this.userForm.value.maxScreens,
@@ -353,7 +327,6 @@ export class EditUserDialogComponent implements OnInit {
           ...this.user,
           full_name: updatedUser.full_name || this.user.full_name,
           role: updatedUser.role || this.user.role,
-          organization_id: updatedUser.organization_id,
           // Use the updated values from the form for subscription and resource info
           subscription_tier: userData.subscription_tier || this.user.subscription_tier,
           subscription_status: userData.subscription_status || this.user.subscription_status,
@@ -376,9 +349,9 @@ export class EditUserDialogComponent implements OnInit {
         this.errorMessage = error.message || 'Failed to update user. Please try again.';
 
         // Scroll to the top of the form to show the error message
-        const dialogElement = document.querySelector('.fixed.inset-0');
-        if (dialogElement) {
-          dialogElement.scrollTop = 0;
+        const contentElement = document.querySelector('.overflow-y-auto');
+        if (contentElement) {
+          contentElement.scrollTop = 0;
         }
       }
     });
