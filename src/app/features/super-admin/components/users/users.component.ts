@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { UserManagementService, User } from '../../services/user-management.service';
+import { UserDetailsDialogComponent } from './user-details-dialog.component';
 
 @Component({
   selector: 'app-users',
@@ -271,20 +272,20 @@ import { UserManagementService, User } from '../../services/user-management.serv
                 </div>
               </th>
               <th class="px-6 py-4 font-semibold">Role</th>
-              <th class="px-6 py-4 font-semibold">Organization & Resources</th>
+              <th class="px-6 py-4 font-semibold">Resources</th>
               <th class="px-6 py-4 font-semibold">Last Active</th>
               <th class="px-6 py-4 text-right font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr *ngFor="let user of users" class="hover:bg-gray-50" [class.bg-blue-50]="isUserSelected(user.id)">
+            <tr *ngFor="let user of users" class="hover:bg-gray-50 cursor-pointer" [class.bg-blue-50]="isUserSelected(user.id)" (click)="viewUserDetails(user)">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <input
                     type="checkbox"
                     class="h-4 w-4 text-blue-600 rounded mr-2"
                     [checked]="isUserSelected(user.id)"
-                    (change)="toggleUserSelection(user.id)"
+                    (change)="toggleUserSelection(user.id); $event.stopPropagation()"
                   >
                   <div class="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
                     {{ getInitials(user.full_name || user.email) }}
@@ -347,8 +348,7 @@ import { UserManagementService, User } from '../../services/user-management.serv
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ user.organization_name || 'N/A' }}</div>
-                <div *ngIf="user.organization_id" class="mt-2 space-y-2">
+                <div class="mt-2 space-y-2">
                   <!-- Storage Usage with Progress Bar -->
                   <div>
                     <div class="flex items-center justify-between mb-1">
@@ -365,12 +365,6 @@ import { UserManagementService, User } from '../../services/user-management.serv
                            [style.width.%]="getPercentage(user.storage_usage || 0, user.max_storage || 1)"
                            [title]="getPercentage(user.storage_usage || 0, user.max_storage || 1) + '% used'"></div>
                     </div>
-                  </div>
-
-                  <!-- Organization Details -->
-                  <div *ngIf="user.organization_created_at" class="text-xs text-gray-500 flex items-center">
-                    <span class="material-icons text-xs mr-1">business</span>
-                    <span title="Organization Created">{{ getTimeAgo(user.organization_created_at) }}</span>
                   </div>
                 </div>
               </td>
@@ -389,13 +383,19 @@ import { UserManagementService, User } from '../../services/user-management.serv
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <button
-                  (click)="editUser(user)"
+                  (click)="editUser(user); $event.stopPropagation()"
                   class="text-blue-600 hover:text-blue-900 mr-3 flex items-center"
                 >
                   <span class="material-icons text-sm mr-1">edit</span>
                   Edit
                 </button>
-
+                <button
+                  (click)="viewUserDetails(user); $event.stopPropagation()"
+                  class="text-indigo-600 hover:text-indigo-900 flex items-center"
+                >
+                  <span class="material-icons text-sm mr-1">visibility</span>
+                  View
+                </button>
               </td>
             </tr>
 
@@ -454,7 +454,13 @@ import { UserManagementService, User } from '../../services/user-management.serv
       (userUpdated)="onUserUpdated($event)"
     ></app-edit-user-dialog>
 
-
+    <!-- User Details Dialog -->
+    <app-user-details-dialog
+      *ngIf="showUserDetailsDialog && selectedUser"
+      [user]="selectedUser"
+      (close)="showUserDetailsDialog = false"
+      (edit)="onEditFromDetails()"
+    ></app-user-details-dialog>
 
     <!-- Bulk Action Dialog -->
     <app-bulk-action-dialog
@@ -474,6 +480,7 @@ export class UsersComponent implements OnInit {
   pageSize = 10;
   showAddUserDialog = false;
   showEditUserDialog = false;
+  showUserDetailsDialog = false;
 
   searchTerm = '';
   selectedRole = 'all';
@@ -633,6 +640,7 @@ export class UsersComponent implements OnInit {
   editUser(user: User): void {
     this.selectedUser = user;
     this.showEditUserDialog = true;
+    this.showUserDetailsDialog = false;
   }
 
   onUserUpdated(updatedUser: User): void {
@@ -644,6 +652,17 @@ export class UsersComponent implements OnInit {
     // Close the dialog
     this.showEditUserDialog = false;
     this.selectedUser = null;
+  }
+
+  viewUserDetails(user: User): void {
+    this.selectedUser = user;
+    this.showUserDetailsDialog = true;
+  }
+
+  onEditFromDetails(): void {
+    // Keep the selected user but switch from details to edit dialog
+    this.showUserDetailsDialog = false;
+    this.showEditUserDialog = true;
   }
 
 

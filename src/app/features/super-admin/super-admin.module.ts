@@ -24,6 +24,7 @@ import { ActivityLogComponent } from './components/activity-log/activity-log.com
 import { AddUserDialogComponent } from './components/users/add-user-dialog.component';
 import { EditUserDialogComponent } from './components/users/edit-user-dialog.component';
 import { BulkActionDialogComponent } from './components/users/bulk-action-dialog.component';
+import { UserDetailsDialogComponent } from './components/users/user-details-dialog.component';
 
 // Additional Services
 import { UserManagementService } from './services/user-management.service';
@@ -55,7 +56,8 @@ const routes: Routes = [
     ArchiveComponent,
     AddUserDialogComponent,
     EditUserDialogComponent,
-    BulkActionDialogComponent
+    BulkActionDialogComponent,
+    UserDetailsDialogComponent
   ],
   imports: [
     CommonModule,
