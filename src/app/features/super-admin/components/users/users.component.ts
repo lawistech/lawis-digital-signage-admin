@@ -5,33 +5,43 @@ import { UserManagementService, User } from '../../services/user-management.serv
   selector: 'app-users',
   template: `
     <div class="space-y-6">
+      <!-- Page Header -->
       <div class="flex justify-between items-center">
-        <h1 class="text-2xl font-bold">User Management</h1>
-        <div class="flex space-x-2">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-800">User Management</h1>
+          <p class="text-sm text-slate-500 mt-1">Manage users and their subscriptions</p>
+        </div>
+        <div class="flex space-x-3">
           <!-- Export dropdown -->
           <div class="relative">
             <button
               (click)="showExportMenu = !showExportMenu"
-              class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center"
+              class="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 flex items-center transition-colors duration-200 shadow-sm"
               [disabled]="isExporting"
-              [class.opacity-50]="isExporting"
+              [class.opacity-70]="isExporting"
             >
-              <span class="material-icons mr-1">download</span>
+              <span class="material-icons text-sm mr-2">download</span>
               {{ isExporting ? 'Exporting...' : 'Export' }}
             </button>
-            <div *ngIf="showExportMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
+            <div *ngIf="showExportMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-slate-200 overflow-hidden">
               <div class="py-1">
                 <button
                   (click)="exportUserData('csv'); showExportMenu = false"
-                  class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  class="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors duration-150"
                 >
-                  Export as CSV
+                  <div class="flex items-center">
+                    <span class="material-icons text-emerald-500 mr-2 text-sm">description</span>
+                    Export as CSV
+                  </div>
                 </button>
                 <button
                   (click)="exportUserData('json'); showExportMenu = false"
-                  class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  class="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors duration-150"
                 >
-                  Export as JSON
+                  <div class="flex items-center">
+                    <span class="material-icons text-emerald-500 mr-2 text-sm">code</span>
+                    Export as JSON
+                  </div>
                 </button>
               </div>
             </div>
@@ -40,9 +50,9 @@ import { UserManagementService, User } from '../../services/user-management.serv
           <!-- Add user button -->
           <button
             (click)="showAddUserDialog = true"
-            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"
+            class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 flex items-center transition-colors duration-200 shadow-sm"
           >
-            <span class="material-icons mr-1">person_add</span>
+            <span class="material-icons text-sm mr-2">person_add</span>
             Add User
           </button>
         </div>
@@ -57,125 +67,160 @@ import { UserManagementService, User } from '../../services/user-management.serv
         </button>
       </div>
 
-      <div class="bg-white rounded-lg shadow overflow-hidden">
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <!-- Advanced filters -->
-        <div class="p-4 border-b">
-          <div class="flex flex-wrap items-center gap-4">
+        <div class="p-5 border-b border-slate-200">
+          <div class="flex flex-col md:flex-row md:items-center gap-4">
             <!-- Search -->
-            <div class="flex items-center space-x-2 flex-grow">
-              <span class="material-icons text-gray-500">search</span>
+            <div class="relative flex-grow">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span class="material-icons text-slate-400 text-lg">search</span>
+              </div>
               <input
                 type="text"
-                placeholder="Search users..."
-                class="border-none focus:ring-0 text-sm flex-grow"
+                placeholder="Search users by name or email..."
+                class="pl-10 pr-4 py-2 border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 rounded-md w-full text-sm text-slate-700"
                 [(ngModel)]="searchTerm"
                 (keyup.enter)="loadUsers()"
               >
             </div>
 
-            <!-- Role filter -->
-            <div>
-              <select
-                class="text-sm border-gray-300 rounded-md"
-                [(ngModel)]="selectedRole"
-                (change)="loadUsers()"
-              >
-                <option value="all">All Roles</option>
-                <option value="admin">Admin</option>
-                <option value="user">User</option>
-                <option value="super_admin">Super Admin</option>
-              </select>
-            </div>
+            <div class="flex flex-wrap gap-3">
+              <!-- Role filter -->
+              <div class="relative">
+                <select
+                  class="appearance-none pl-3 pr-8 py-2 border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 rounded-md text-sm text-slate-700 bg-white"
+                  [(ngModel)]="selectedRole"
+                  (change)="loadUsers()"
+                >
+                  <option value="all">All Roles</option>
+                  <option value="admin">Admin</option>
+                  <option value="user">User</option>
+                  <option value="super_admin">Super Admin</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                  <span class="material-icons text-slate-400 text-sm">expand_more</span>
+                </div>
+              </div>
 
-            <!-- Status filter -->
-            <div>
-              <select
-                class="text-sm border-gray-300 rounded-md"
-                [(ngModel)]="selectedStatus"
-                (change)="loadUsers()"
-              >
-                <option value="all">All Statuses</option>
-                <option value="active">Active</option>
-                <option value="pending">Pending</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
+              <!-- Status filter -->
+              <div class="relative">
+                <select
+                  class="appearance-none pl-3 pr-8 py-2 border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 rounded-md text-sm text-slate-700 bg-white"
+                  [(ngModel)]="selectedStatus"
+                  (change)="loadUsers()"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="active">Active</option>
+                  <option value="pending">Pending</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                  <span class="material-icons text-slate-400 text-sm">expand_more</span>
+                </div>
+              </div>
 
-            <!-- Subscription tier filter -->
-            <div>
-              <select
-                class="text-sm border-gray-300 rounded-md"
-                [(ngModel)]="selectedTier"
-                (change)="loadUsers()"
-              >
-                <option value="all">All Tiers</option>
-                <option value="free">Free</option>
-                <option value="basic">Basic</option>
-                <option value="premium">Premium</option>
-                <option value="enterprise">Enterprise</option>
-              </select>
-            </div>
+              <!-- Subscription tier filter -->
+              <div class="relative">
+                <select
+                  class="appearance-none pl-3 pr-8 py-2 border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 rounded-md text-sm text-slate-700 bg-white"
+                  [(ngModel)]="selectedTier"
+                  (change)="loadUsers()"
+                >
+                  <option value="all">All Tiers</option>
+                  <option value="free">Free</option>
+                  <option value="basic">Basic</option>
+                  <option value="premium">Premium</option>
+                  <option value="enterprise">Enterprise</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                  <span class="material-icons text-slate-400 text-sm">expand_more</span>
+                </div>
+              </div>
 
-            <!-- Date filter -->
-            <div>
-              <select
-                class="text-sm border-gray-300 rounded-md"
-                [(ngModel)]="dateFilter"
-                (change)="loadUsers()"
-              >
-                <option value="all">All Time</option>
-                <option value="today">Today</option>
-                <option value="week">Last 7 Days</option>
-                <option value="month">Last 30 Days</option>
-                <option value="year">Last Year</option>
-              </select>
-            </div>
+              <!-- Date filter -->
+              <div class="relative">
+                <select
+                  class="appearance-none pl-3 pr-8 py-2 border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 rounded-md text-sm text-slate-700 bg-white"
+                  [(ngModel)]="dateFilter"
+                  (change)="loadUsers()"
+                >
+                  <option value="all">All Time</option>
+                  <option value="today">Today</option>
+                  <option value="week">Last 7 Days</option>
+                  <option value="month">Last 30 Days</option>
+                  <option value="year">Last Year</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                  <span class="material-icons text-slate-400 text-sm">expand_more</span>
+                </div>
+              </div>
 
-            <!-- Reset filters button -->
-            <button
-              (click)="resetFilters()"
-              class="text-sm text-blue-600 hover:text-blue-800 flex items-center"
-            >
-              <span class="material-icons text-sm mr-1">refresh</span>
-              Reset
-            </button>
+              <!-- Reset filters button -->
+              <button
+                (click)="resetFilters()"
+                class="px-3 py-2 border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50 flex items-center transition-colors duration-150"
+              >
+                <span class="material-icons text-sm mr-1">refresh</span>
+                Reset
+              </button>
+            </div>
           </div>
         </div>
 
         <!-- Bulk actions -->
-        <div *ngIf="selectedUsers.length > 0" class="bg-blue-50 p-4 border-b flex justify-between items-center">
-          <div class="text-sm text-blue-800">
-            <span class="font-medium">{{ selectedUsers.length }}</span> users selected
+        <div *ngIf="selectedUsers.length > 0" class="bg-indigo-50 p-5 border-b border-indigo-100 flex justify-between items-center">
+          <div class="flex items-center">
+            <div class="h-8 w-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3">
+              <span class="material-icons text-sm">check_circle</span>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-indigo-800">
+                <span class="font-bold">{{ selectedUsers.length }}</span> users selected
+              </p>
+              <p class="text-xs text-indigo-600">Select an action to perform on these users</p>
+            </div>
           </div>
-          <div class="flex space-x-2">
+          <div class="flex space-x-3">
             <!-- Bulk actions dropdown -->
             <div class="relative">
               <button
                 (click)="showBulkActionMenu = !showBulkActionMenu"
-                class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-sm flex items-center"
+                class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm flex items-center transition-colors duration-200 shadow-sm"
               >
+                <span class="material-icons text-sm mr-1">settings</span>
                 Bulk Actions
                 <span class="material-icons ml-1 text-sm">arrow_drop_down</span>
               </button>
-              <div *ngIf="showBulkActionMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
+              <div *ngIf="showBulkActionMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-slate-200 overflow-hidden">
                 <div class="py-1">
                   <button
                     (click)="performBulkAction('changeRole'); showBulkActionMenu = false"
-                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    class="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors duration-150"
                   >
-                    Change Role
+                    <div class="flex items-center">
+                      <span class="material-icons text-indigo-500 mr-2 text-sm">manage_accounts</span>
+                      Change Role
+                    </div>
                   </button>
                   <button
                     (click)="performBulkAction('changeStatus'); showBulkActionMenu = false"
-                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    class="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors duration-150"
                   >
-                    Change Status
+                    <div class="flex items-center">
+                      <span class="material-icons text-indigo-500 mr-2 text-sm">toggle_on</span>
+                      Change Status
+                    </div>
                   </button>
+                  <div class="border-t border-slate-200 my-1"></div>
                   <button
                     (click)="performBulkAction('delete'); showBulkActionMenu = false"
-                    class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                    class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-150"
                   >
-                    Delete Selected
+                    <div class="flex items-center">
+                      <span class="material-icons text-red-500 mr-2 text-sm">delete</span>
+                      Delete Selected
+                    </div>
                   </button>
                 </div>
               </div>
@@ -184,49 +229,59 @@ import { UserManagementService, User } from '../../services/user-management.serv
             <!-- Cancel selection -->
             <button
               (click)="selectedUsers = []"
-              class="text-gray-600 hover:text-gray-800 px-3 py-1 rounded border border-gray-300 text-sm"
+              class="px-4 py-2 border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50 flex items-center transition-colors duration-150 shadow-sm"
             >
+              <span class="material-icons text-sm mr-1">close</span>
               Cancel
             </button>
           </div>
         </div>
 
         <!-- Loading indicator -->
-        <div *ngIf="isLoading" class="p-6 text-center">
-          <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
-          <p class="text-gray-500">Loading users...</p>
+        <div *ngIf="isLoading" class="p-10 text-center">
+          <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-slate-200 border-t-indigo-600 mb-4"></div>
+          <p class="text-slate-500 font-medium">Loading users...</p>
         </div>
 
         <!-- Error message -->
-        <div *ngIf="errorMessage && !isLoading" class="p-6 text-center">
-          <div class="bg-red-50 text-red-600 p-4 rounded-lg inline-flex items-center">
-            <span class="material-icons mr-2">error</span>
-            {{ errorMessage }}
+        <div *ngIf="errorMessage && !isLoading" class="p-10 text-center">
+          <div class="inline-flex flex-col items-center">
+            <div class="h-16 w-16 rounded-full bg-red-100 text-red-500 flex items-center justify-center mb-4">
+              <span class="material-icons text-3xl">error_outline</span>
+            </div>
+            <h3 class="text-lg font-medium text-slate-800 mb-2">Error Loading Users</h3>
+            <p class="text-slate-600 mb-6 max-w-md mx-auto">{{ errorMessage }}</p>
+            <button
+              (click)="loadUsers()"
+              class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 flex items-center transition-colors duration-200 shadow-sm mx-auto"
+            >
+              <span class="material-icons text-sm mr-2">autorenew</span>
+              Try Again
+            </button>
           </div>
-          <button (click)="loadUsers()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-            Try Again
-          </button>
         </div>
 
         <!-- Users table -->
-        <table *ngIf="!isLoading && !errorMessage" class="min-w-full">
+        <table *ngIf="!isLoading && !errorMessage" class="min-w-full divide-y divide-slate-200">
           <thead>
-            <tr class="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              <th class="px-6 py-3">
+            <tr class="bg-slate-50 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th class="px-6 py-4">
                 <div class="flex items-center">
-                  <input
-                    type="checkbox"
-                    class="h-4 w-4 text-blue-600 rounded mr-2"
-                    [checked]="selectedUsers.length === users.length && users.length > 0"
-                    (change)="selectAllUsers()"
-                  >
-                  User & Subscription
+                  <div class="relative flex items-center">
+                    <input
+                      type="checkbox"
+                      class="h-4 w-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 mr-3"
+                      [checked]="selectedUsers.length === users.length && users.length > 0"
+                      (change)="selectAllUsers()"
+                    >
+                  </div>
+                  <span class="font-semibold">User & Subscription</span>
                 </div>
               </th>
-              <th class="px-6 py-3">Role</th>
-              <th class="px-6 py-3">Organization & Resources</th>
-              <th class="px-6 py-3">Last Active</th>
-              <th class="px-6 py-3">Actions</th>
+              <th class="px-6 py-4 font-semibold">Role</th>
+              <th class="px-6 py-4 font-semibold">Organization & Resources</th>
+              <th class="px-6 py-4 font-semibold">Last Active</th>
+              <th class="px-6 py-4 text-right font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
@@ -366,27 +421,32 @@ import { UserManagementService, User } from '../../services/user-management.serv
           </tbody>
         </table>
 
-        <div *ngIf="!isLoading && !errorMessage" class="px-6 py-4 border-t flex items-center justify-between">
-          <div class="text-sm text-gray-500">
-            Showing <span class="font-medium">{{ users.length }}</span> users
+        <div *ngIf="!isLoading && !errorMessage" class="px-6 py-5 border-t border-slate-200 flex items-center justify-between bg-white">
+          <div class="text-sm text-slate-600 flex items-center">
+            <span class="material-icons text-indigo-500 mr-2 text-sm">people</span>
+            Showing <span class="font-medium mx-1">{{ users.length }}</span> users
           </div>
-          <div class="flex space-x-2">
+          <div class="flex items-center space-x-4">
             <button
               (click)="previousPage()"
-              class="px-3 py-1 border rounded text-sm"
+              class="px-4 py-2 border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50 flex items-center transition-colors duration-150 shadow-sm"
               [disabled]="currentPage === 1 || isLoading"
-              [ngClass]="{'opacity-50 cursor-not-allowed': currentPage === 1 || isLoading, 'hover:bg-gray-100': currentPage > 1 && !isLoading}"
+              [ngClass]="{'opacity-50 cursor-not-allowed': currentPage === 1 || isLoading}"
             >
+              <span class="material-icons text-sm mr-1">chevron_left</span>
               Previous
             </button>
-            <span class="px-3 py-1 text-sm">Page {{ currentPage }}</span>
+            <div class="px-4 py-2 bg-slate-100 rounded-md text-sm font-medium text-slate-700">
+              Page {{ currentPage }}
+            </div>
             <button
               (click)="nextPage()"
-              class="px-3 py-1 border rounded text-sm"
+              class="px-4 py-2 border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50 flex items-center transition-colors duration-150 shadow-sm"
               [disabled]="users.length < pageSize || isLoading"
-              [ngClass]="{'opacity-50 cursor-not-allowed': users.length < pageSize || isLoading, 'hover:bg-gray-100': users.length >= pageSize && !isLoading}"
+              [ngClass]="{'opacity-50 cursor-not-allowed': users.length < pageSize || isLoading}"
             >
               Next
+              <span class="material-icons text-sm ml-1">chevron_right</span>
             </button>
           </div>
         </div>

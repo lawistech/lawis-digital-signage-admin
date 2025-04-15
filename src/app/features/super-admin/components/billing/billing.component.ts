@@ -4,175 +4,258 @@ import { SuperAdminStatsService, BillingRecord, BillingSummary } from '../../ser
 @Component({
   selector: 'app-billing',
   template: `
-    <div class="space-y-6">
+    <div class="space-y-8">
+      <!-- Page Header -->
       <div class="flex justify-between items-center">
-        <h1 class="text-2xl font-bold">Billing Management</h1>
-        <div class="flex space-x-2">
-          <button (click)="refreshData()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center">
-            <span class="material-icons mr-1">refresh</span>
-            Refresh
+        <div>
+          <h1 class="text-2xl font-bold text-slate-800">Billing Management</h1>
+          <p class="text-sm text-slate-500 mt-1">Manage invoices and subscription payments</p>
+        </div>
+        <div class="flex space-x-3">
+          <button
+            (click)="refreshData()"
+            class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 flex items-center transition-colors duration-200 shadow-sm"
+            [class.opacity-70]="isLoading"
+            [disabled]="isLoading"
+          >
+            <span class="material-icons text-sm mr-2" [class.animate-spin]="isLoading">{{ isLoading ? 'autorenew' : 'refresh' }}</span>
+            {{ isLoading ? 'Refreshing...' : 'Refresh' }}
           </button>
-          <button class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center">
-            <span class="material-icons mr-1">receipt</span>
+          <button class="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 flex items-center transition-colors duration-200 shadow-sm">
+            <span class="material-icons text-sm mr-2">receipt</span>
             Generate Invoices
           </button>
-          <button class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center">
-            <span class="material-icons mr-1">download</span>
+          <button class="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 flex items-center transition-colors duration-200 shadow-sm">
+            <span class="material-icons text-sm mr-2">download</span>
             Export
           </button>
         </div>
       </div>
 
       <!-- Summary Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="bg-white rounded-lg shadow p-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Total Revenue Card -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow duration-300 overflow-hidden relative group">
+          <div class="absolute top-0 left-0 w-full h-1 bg-emerald-500"></div>
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm text-gray-500">Total Revenue</p>
-              <h3 class="text-2xl font-bold">£{{ totalRevenue.toFixed(2) }}</h3>
+              <p class="text-sm font-medium text-slate-500">Total Revenue</p>
+              <h3 class="text-3xl font-bold text-slate-800 mt-1">£{{ totalRevenue.toFixed(2) }}</h3>
             </div>
-            <span class="material-icons text-green-500">payments</span>
+            <div class="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform duration-300">
+              <span class="material-icons">payments</span>
+            </div>
+          </div>
+          <div class="mt-4 flex items-center text-sm text-slate-600">
+            <span class="material-icons text-emerald-500 text-sm mr-1">trending_up</span>
+            <span>Total revenue to date</span>
           </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow p-6">
+        <!-- Outstanding Invoices Card -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow duration-300 overflow-hidden relative group">
+          <div class="absolute top-0 left-0 w-full h-1 bg-amber-500"></div>
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm text-gray-500">Outstanding Invoices</p>
-              <h3 class="text-2xl font-bold">£{{ outstandingAmount.toFixed(2) }}</h3>
+              <p class="text-sm font-medium text-slate-500">Outstanding Invoices</p>
+              <h3 class="text-3xl font-bold text-slate-800 mt-1">£{{ outstandingAmount.toFixed(2) }}</h3>
             </div>
-            <span class="material-icons text-yellow-500">receipt_long</span>
+            <div class="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform duration-300">
+              <span class="material-icons">receipt_long</span>
+            </div>
+          </div>
+          <div class="mt-4 flex items-center text-sm text-slate-600">
+            <span class="material-icons text-amber-500 text-sm mr-1">schedule</span>
+            <span>Pending payments</span>
           </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow p-6">
+        <!-- Active Subscriptions Card -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow duration-300 overflow-hidden relative group">
+          <div class="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm text-gray-500">Active Subscriptions</p>
-              <h3 class="text-2xl font-bold">{{ activeSubscriptions }}</h3>
+              <p class="text-sm font-medium text-slate-500">Active Subscriptions</p>
+              <h3 class="text-3xl font-bold text-slate-800 mt-1">{{ activeSubscriptions }}</h3>
             </div>
-            <span class="material-icons text-blue-500">subscriptions</span>
+            <div class="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform duration-300">
+              <span class="material-icons">subscriptions</span>
+            </div>
+          </div>
+          <div class="mt-4 flex items-center text-sm text-slate-600">
+            <span class="material-icons text-blue-500 text-sm mr-1">people</span>
+            <span>Current active users</span>
           </div>
         </div>
       </div>
 
       <!-- Invoices Table -->
-      <div class="bg-white rounded-lg shadow overflow-hidden">
-        <div class="p-4 border-b flex justify-between items-center">
-          <div class="flex items-center space-x-2">
-            <span class="material-icons text-gray-500">search</span>
-            <input
-              type="text"
-              placeholder="Search invoices..."
-              class="border-none focus:ring-0 text-sm"
-            >
-          </div>
-          <div class="flex space-x-2">
-            <select class="text-sm border-gray-300 rounded-md">
-              <option value="all">All Statuses</option>
-              <option value="paid">Paid</option>
-              <option value="pending">Pending</option>
-              <option value="failed">Failed</option>
-            </select>
-            <select class="text-sm border-gray-300 rounded-md">
-              <option value="all">All Organizations</option>
-              <!-- Organizations would be populated here -->
-            </select>
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-5 border-b border-slate-200">
+          <div class="flex flex-col md:flex-row md:items-center gap-4">
+            <!-- Search -->
+            <div class="relative flex-grow">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span class="material-icons text-slate-400 text-lg">search</span>
+              </div>
+              <input
+                type="text"
+                placeholder="Search invoices by ID or organization..."
+                class="pl-10 pr-4 py-2 border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 rounded-md w-full text-sm text-slate-700"
+              >
+            </div>
+
+            <div class="flex flex-wrap gap-3">
+              <!-- Status filter -->
+              <div class="relative">
+                <select
+                  class="appearance-none pl-3 pr-8 py-2 border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 rounded-md text-sm text-slate-700 bg-white"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="paid">Paid</option>
+                  <option value="pending">Pending</option>
+                  <option value="failed">Failed</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                  <span class="material-icons text-slate-400 text-sm">expand_more</span>
+                </div>
+              </div>
+
+              <!-- Organization filter -->
+              <div class="relative">
+                <select
+                  class="appearance-none pl-3 pr-8 py-2 border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 rounded-md text-sm text-slate-700 bg-white"
+                >
+                  <option value="all">All Organizations</option>
+                  <!-- Organizations would be populated here -->
+                </select>
+                <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                  <span class="material-icons text-slate-400 text-sm">expand_more</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- Loading indicator -->
-        <div *ngIf="isLoading" class="p-6 text-center">
-          <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
-          <p class="text-gray-500">Loading billing records...</p>
+        <div *ngIf="isLoading" class="p-10 text-center">
+          <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-slate-200 border-t-indigo-600 mb-4"></div>
+          <p class="text-slate-500 font-medium">Loading billing records...</p>
         </div>
 
         <!-- Error message -->
-        <div *ngIf="errorMessage && !isLoading" class="p-6 text-center">
-          <div class="bg-red-50 text-red-600 p-4 rounded-lg inline-flex items-center">
-            <span class="material-icons mr-2">error</span>
-            {{ errorMessage }}
+        <div *ngIf="errorMessage && !isLoading" class="p-10 text-center">
+          <div class="inline-flex flex-col items-center">
+            <div class="h-16 w-16 rounded-full bg-red-100 text-red-500 flex items-center justify-center mb-4">
+              <span class="material-icons text-3xl">error_outline</span>
+            </div>
+            <h3 class="text-lg font-medium text-slate-800 mb-2">Error Loading Records</h3>
+            <p class="text-slate-600 mb-6 max-w-md mx-auto">{{ errorMessage }}</p>
+            <button
+              (click)="refreshData()"
+              class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 flex items-center transition-colors duration-200 shadow-sm mx-auto"
+            >
+              <span class="material-icons text-sm mr-2">autorenew</span>
+              Try Again
+            </button>
           </div>
-          <button (click)="refreshData()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-            Try Again
-          </button>
         </div>
 
         <!-- Billing records table -->
-        <table *ngIf="!isLoading && !errorMessage" class="min-w-full">
+        <table *ngIf="!isLoading && !errorMessage" class="min-w-full divide-y divide-slate-200">
           <thead>
-            <tr class="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              <th class="px-6 py-3">Invoice #</th>
-              <th class="px-6 py-3">Organization</th>
-              <th class="px-6 py-3">Amount</th>
-              <th class="px-6 py-3">Status</th>
-              <th class="px-6 py-3">Invoice Date</th>
-              <th class="px-6 py-3">Due Date</th>
-              <th class="px-6 py-3">Actions</th>
+            <tr class="bg-slate-50 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th class="px-6 py-4 font-semibold">Invoice #</th>
+              <th class="px-6 py-4 font-semibold">Organization</th>
+              <th class="px-6 py-4 font-semibold">Amount</th>
+              <th class="px-6 py-4 font-semibold">Status</th>
+              <th class="px-6 py-4 font-semibold">Invoice Date</th>
+              <th class="px-6 py-4 font-semibold">Due Date</th>
+              <th class="px-6 py-4 text-right font-semibold">Actions</th>
             </tr>
           </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr *ngFor="let record of billingRecords" class="hover:bg-gray-50">
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                INV-{{ record.id.substring(0, 8).toUpperCase() }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ record.organization_name }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                £{{ record.amount.toFixed(2) }}
+          <tbody class="bg-white divide-y divide-slate-200">
+            <tr *ngFor="let record of billingRecords" class="hover:bg-slate-50 transition-colors duration-150">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-slate-800 flex items-center">
+                  <span class="material-icons text-indigo-500 mr-2 text-sm">receipt</span>
+                  INV-{{ record.id.substring(0, 8).toUpperCase() }}
+                </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                <div class="text-sm text-slate-700">{{ record.organization_name }}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-slate-800">£{{ record.amount.toFixed(2) }}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
                       [ngClass]="{
-                        'bg-green-100 text-green-800': record.status === 'paid',
-                        'bg-yellow-100 text-yellow-800': record.status === 'pending',
+                        'bg-emerald-100 text-emerald-800': record.status === 'paid',
+                        'bg-amber-100 text-amber-800': record.status === 'pending',
                         'bg-red-100 text-red-800': record.status === 'failed'
                       }">
-                  {{ record.status }}
+                  <span class="material-icons text-xs mr-1"
+                        [ngClass]="{
+                          'text-emerald-600': record.status === 'paid',
+                          'text-amber-600': record.status === 'pending',
+                          'text-red-600': record.status === 'failed'
+                        }">{{ record.status === 'paid' ? 'check_circle' : (record.status === 'pending' ? 'schedule' : 'error') }}</span>
+                  {{ record.status | titlecase }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ formatDate(record.invoice_date) }}
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-slate-600">{{ formatDate(record.invoice_date) }}</div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ formatDate(record.due_date) }}
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-slate-600">{{ formatDate(record.due_date) }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button class="text-blue-600 hover:text-blue-900 mr-3">View</button>
-                <button class="text-green-600 hover:text-green-900">Mark Paid</button>
+                <button class="text-indigo-600 hover:text-indigo-900 mr-3 transition-colors duration-150">View</button>
+                <button class="text-emerald-600 hover:text-emerald-900 transition-colors duration-150">Mark Paid</button>
               </td>
             </tr>
 
             <tr *ngIf="billingRecords.length === 0 && !isLoading && !errorMessage">
-              <td colspan="7" class="px-6 py-4 text-center text-gray-500">
-                No invoices found
+              <td colspan="7" class="px-6 py-10 text-center">
+                <div class="inline-flex flex-col items-center">
+                  <div class="h-12 w-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mb-3">
+                    <span class="material-icons">receipt_long</span>
+                  </div>
+                  <p class="text-slate-500 font-medium">No invoices found</p>
+                  <p class="text-slate-400 text-sm mt-1">Try adjusting your search or filters</p>
+                </div>
               </td>
             </tr>
           </tbody>
         </table>
 
-        <div *ngIf="!isLoading && !errorMessage" class="px-6 py-4 border-t flex items-center justify-between">
-          <div class="text-sm text-gray-500">
-            Showing <span class="font-medium">{{ billingRecords.length }}</span> of <span class="font-medium">{{ totalRecords }}</span> invoices
+        <div *ngIf="!isLoading && !errorMessage" class="px-6 py-5 border-t border-slate-200 flex items-center justify-between bg-white">
+          <div class="text-sm text-slate-600 flex items-center">
+            <span class="material-icons text-indigo-500 mr-2 text-sm">receipt_long</span>
+            Showing <span class="font-medium mx-1">{{ billingRecords.length }}</span> of <span class="font-medium mx-1">{{ totalRecords }}</span> invoices
           </div>
-          <div class="flex space-x-2">
+          <div class="flex items-center space-x-4">
             <button
               (click)="previousPage()"
-              class="px-3 py-1 border rounded text-sm"
+              class="px-4 py-2 border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50 flex items-center transition-colors duration-150 shadow-sm"
               [disabled]="currentPage === 1 || isLoading"
-              [ngClass]="{'opacity-50 cursor-not-allowed': currentPage === 1 || isLoading, 'hover:bg-gray-100': currentPage > 1 && !isLoading}"
+              [ngClass]="{'opacity-50 cursor-not-allowed': currentPage === 1 || isLoading}"
             >
+              <span class="material-icons text-sm mr-1">chevron_left</span>
               Previous
             </button>
-            <span class="px-3 py-1 text-sm">Page {{ currentPage }}</span>
+            <div class="px-4 py-2 bg-slate-100 rounded-md text-sm font-medium text-slate-700">
+              Page {{ currentPage }}
+            </div>
             <button
               (click)="nextPage()"
-              class="px-3 py-1 border rounded text-sm"
+              class="px-4 py-2 border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50 flex items-center transition-colors duration-150 shadow-sm"
               [disabled]="currentPage * pageSize >= totalRecords || isLoading"
-              [ngClass]="{'opacity-50 cursor-not-allowed': currentPage * pageSize >= totalRecords || isLoading, 'hover:bg-gray-100': currentPage * pageSize < totalRecords && !isLoading}"
+              [ngClass]="{'opacity-50 cursor-not-allowed': currentPage * pageSize >= totalRecords || isLoading}"
             >
               Next
+              <span class="material-icons text-sm ml-1">chevron_right</span>
             </button>
           </div>
         </div>
