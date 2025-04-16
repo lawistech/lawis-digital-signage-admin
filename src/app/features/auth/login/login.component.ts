@@ -8,7 +8,12 @@ import { NotificationService } from '../../../core/services/notification.service
 @Component({
   selector: 'app-login',
   templateUrl: './login.component.html',
-  //styleUrls: ['./login.component.css']
+  styles: [`
+    :host {
+      display: block;
+      height: 100vh;
+    }
+  `]
 })
 export class LoginComponent implements OnInit {
   loginForm!: FormGroup;
@@ -32,7 +37,7 @@ export class LoginComponent implements OnInit {
 
     // Get return URL from route parameters or default to '/dashboard'
     this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/dashboard';
-    
+
     // Check if user is already logged in
     this.authService.currentUser$.subscribe(user => {
       if (user) {

@@ -1,41 +1,56 @@
 <!-- src/app/features/auth/login/login.component.html -->
-<div class="min-h-screen flex items-center justify-center bg-stone-100 py-12 px-4 sm:px-6 lg:px-8">
-  <div class="max-w-md w-full bg-white rounded-lg shadow-md border border-stone-200 overflow-hidden">
-    <!-- Paper fold corner effect -->
-    <div class="relative">
-      <div class="absolute top-0 right-0 w-0 h-0 border-t-[24px] border-r-[24px] border-t-stone-200 border-r-stone-50 shadow-sm"></div>
-    </div>
-    
-    <div class="p-8">
-      <div class="text-center mb-8">
-        <h2 class="text-3xl font-serif font-bold text-stone-800">
-          Call Tracker
-        </h2>
-        <p class="mt-2 text-stone-600 text-sm">
-          Sign in to your account
-        </p>
-        <div class="mt-2 h-px w-16 bg-stone-300 mx-auto"></div>
+<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md w-full bg-white rounded-xl shadow-lg overflow-hidden">
+    <!-- Header with gradient -->
+    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
+      <div class="flex items-center justify-center mb-4">
+        <div class="h-16 w-16 rounded-full bg-white/20 flex items-center justify-center">
+          <span class="material-icons text-3xl">admin_panel_settings</span>
+        </div>
       </div>
-      
-      <form class="space-y-6" [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+      <h2 class="text-2xl font-bold text-center">
+        Digital Signage
+      </h2>
+      <p class="mt-1 text-center text-white/80 text-sm">
+        Super Admin Portal
+      </p>
+    </div>
+
+    <div class="p-8">
+      <!-- Error message display -->
+      <div *ngIf="errorMessage" class="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+        {{ errorMessage }}
+      </div>
+
+      <form class="space-y-6" [formGroup]="loginForm" (ngSubmit)="onSubmit()" (keydown)="onKeyDown($event)">
         <div class="space-y-5">
           <div>
-            <label for="email-address" class="block text-sm font-medium text-stone-700 mb-1">Email address</label>
-            <input id="email-address" name="email" type="email" formControlName="email" required
-                   class="w-full px-3 py-2 bg-stone-100 border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:border-transparent"
-                   placeholder="your.email@example.com">
-            <div *ngIf="f['email'].touched && f['email'].errors" class="text-rose-600 text-sm mt-1">
+            <label for="email-address" class="block text-sm font-medium text-gray-700 mb-1">Email address</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span class="material-icons text-gray-400 text-sm">email</span>
+              </div>
+              <input id="email-address" name="email" type="email" formControlName="email" required
+                     class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                     placeholder="admin@example.com" (input)="onInputChange()">
+            </div>
+            <div *ngIf="f['email'].touched && f['email'].errors" class="text-red-600 text-sm mt-1">
               <span *ngIf="f['email'].errors['required']">Email is required</span>
               <span *ngIf="f['email'].errors['email']">Please enter a valid email</span>
             </div>
           </div>
-          
+
           <div>
-            <label for="password" class="block text-sm font-medium text-stone-700 mb-1">Password</label>
-            <input id="password" name="password" type="password" formControlName="password" required
-                   class="w-full px-3 py-2 bg-stone-100 border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:border-transparent"
-                   placeholder="••••••••">
-            <div *ngIf="f['password'].touched && f['password'].errors" class="text-rose-600 text-sm mt-1">
+            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span class="material-icons text-gray-400 text-sm">lock</span>
+              </div>
+              <input id="password" name="password" type="password" formControlName="password" required
+                     class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                     placeholder="••••••••" (input)="onInputChange()">
+            </div>
+            <div *ngIf="f['password'].touched && f['password'].errors" class="text-red-600 text-sm mt-1">
               <span *ngIf="f['password'].errors['required']">Password is required</span>
               <span *ngIf="f['password'].errors['minlength']">Password must be at least 6 characters</span>
             </div>
@@ -45,13 +60,13 @@
         <div class="flex items-center justify-between">
           <div class="flex items-center">
             <input id="remember-me" name="remember-me" type="checkbox"
-                   class="h-4 w-4 text-stone-600 focus:ring-stone-500 border-stone-300 rounded">
-            <label for="remember-me" class="ml-2 block text-sm text-stone-700">
+                   class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+            <label for="remember-me" class="ml-2 block text-sm text-gray-700">
               Remember me
             </label>
           </div>
           <div class="text-sm">
-            <a routerLink="/login/forgot-password" class="font-medium text-stone-600 hover:text-stone-800 underline decoration-dashed underline-offset-4">
+            <a routerLink="/login/forgot-password" class="font-medium text-indigo-600 hover:text-indigo-800">
               Forgot password?
             </a>
           </div>
@@ -59,23 +74,20 @@
 
         <div>
           <button type="submit" [disabled]="isLoading || loginForm.invalid"
-                  class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-stone-800 hover:bg-stone-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-stone-500 disabled:bg-stone-300 disabled:cursor-not-allowed">
+                  class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
             <span *ngIf="isLoading" class="mr-2">
               <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             </span>
-            <span>Sign in</span>
+            <span>Sign in to Dashboard</span>
           </button>
         </div>
-        
-        <div class="text-center pt-4 border-t border-stone-200">
-          <p class="text-sm text-stone-600">
-            Don't have an account?
-            <a routerLink="/login/register" class="font-medium text-stone-600 hover:text-stone-800 underline decoration-dashed underline-offset-4">
-              Sign up
-            </a>
+
+        <div class="text-center pt-4 border-t border-gray-200">
+          <p class="text-sm text-gray-600">
+            Need access? Contact your administrator
           </p>
         </div>
       </form>
