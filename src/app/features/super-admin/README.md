@@ -22,6 +22,8 @@ cd lawis-admin-digital-signage
 
 Alternatively, you can manually run the SQL commands in `src/environments/updated-supabase.sql` in your Supabase SQL editor.
 
+Additionally, you need to add the `update_json_field` function to your Supabase database. This function is used to update JSON fields without overwriting the entire object. You can add this function by running the SQL commands in `src/environments/update-json-field.sql` in your Supabase SQL editor.
+
 ### 2. Create a Super Admin User
 
 To create a super admin user, you need to update the user's metadata in the Supabase Auth dashboard:

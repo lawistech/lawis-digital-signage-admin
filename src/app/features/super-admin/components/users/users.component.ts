@@ -1,6 +1,5 @@
 import { Component, OnInit } from '@angular/core';
 import { UserManagementService, User } from '../../services/user-management.service';
-import { UserDetailsDialogComponent } from './user-details-dialog.component';
 
 @Component({
   selector: 'app-users',
@@ -649,12 +648,10 @@ export class UsersComponent implements OnInit {
     this.showUserDetailsDialog = false;
   }
 
-  onUserUpdated(updatedUser: User): void {
-    // Update the user in the local array
-    const index = this.users.findIndex(u => u.id === updatedUser.id);
-    if (index !== -1) {
-      this.users[index] = updatedUser;
-    }
+  onUserUpdated(_: User): void {
+    // Reload the users list to get the latest data from the server
+    this.loadUsers();
+
     // Close the dialog
     this.showEditUserDialog = false;
     this.selectedUser = null;

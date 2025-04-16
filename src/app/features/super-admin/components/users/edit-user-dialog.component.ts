@@ -284,10 +284,12 @@ export class EditUserDialogComponent implements OnInit {
   }
 
   convertBytesToGB(bytes: number): number {
+    if (!bytes) return 5; // Default to 5GB if no value
     return Math.round(bytes / (1024 * 1024 * 1024));
   }
 
   convertGBToBytes(gb: number): number {
+    if (!gb) return 5 * 1024 * 1024 * 1024; // Default to 5GB if no value
     return gb * 1024 * 1024 * 1024;
   }
 

@@ -270,8 +270,13 @@ export class UserManagementService {
     }
 
     if (userData.max_storage !== undefined) {
-      // Update settings object with max_storage
-      organizationUpdateData.settings = { max_storage: userData.max_storage };
+      // Update settings object with max_storage, preserving other settings
+      organizationUpdateData.settings = this.supabase.supabaseClient.rpc('update_json_field', {
+        p_table: 'organizations',
+        p_field: 'settings',
+        p_key: 'max_storage',
+        p_value: userData.max_storage
+      });
     }
 
     console.log('Updating user with data:', profileUpdateData);
@@ -295,21 +300,64 @@ export class UserManagementService {
         // Store the profile data for later use
         const profileData = data;
 
-        // If we have organization updates and an organization ID, update the organization
-        if (Object.keys(organizationUpdateData).length > 0 && organizationId) {
-          return from(
-            this.supabase.supabaseClient
-              .from('organizations')
-              .update(organizationUpdateData)
-              .eq('id', organizationId)
-              .select()
-          ).pipe(
-            map(orgResult => {
-              if (orgResult.error) throw orgResult.error;
-              // Return both profile data and organization data
-              return { profileData, orgData: orgResult.data };
-            })
-          );
+        // If we have organization updates
+        if (Object.keys(organizationUpdateData).length > 0) {
+          // If we have an organization ID, update the organization
+          if (organizationId) {
+            return from(
+              this.supabase.supabaseClient
+                .from('organizations')
+                .update(organizationUpdateData)
+                .eq('id', organizationId)
+                .select()
+            ).pipe(
+              map(orgResult => {
+                if (orgResult.error) throw orgResult.error;
+                // Return both profile data and organization data
+                return { profileData, orgData: orgResult.data };
+              })
+            );
+          } else {
+            // If we don't have an organization ID but have max_screens or max_storage,
+            // create a personal organization for this user
+            if (userData.max_screens !== undefined || userData.max_storage !== undefined) {
+              const newOrgData = {
+                name: `${profileData.name || 'User'}'s Organization`,
+                subscription_tier: userData.subscription_tier || 'free',
+                subscription_status: userData.subscription_status || 'active',
+                max_screens: userData.max_screens || 1,
+                settings: { max_storage: userData.max_storage || 5242880 } // Default to 5GB
+              };
+
+              return from(
+                this.supabase.supabaseClient
+                  .from('organizations')
+                  .insert(newOrgData)
+                  .select()
+                  .single()
+              ).pipe(
+                switchMap(orgResult => {
+                  if (orgResult.error) throw orgResult.error;
+
+                  // Now update the user's organization_id
+                  return from(
+                    this.supabase.supabaseClient
+                      .from('profiles')
+                      .update({ organization_id: orgResult.data.id })
+                      .eq('id', userId)
+                      .select()
+                      .single()
+                  ).pipe(
+                    map(updatedProfileResult => {
+                      if (updatedProfileResult.error) throw updatedProfileResult.error;
+                      // Return both updated profile data and organization data
+                      return { profileData: updatedProfileResult.data, orgData: [orgResult.data] };
+                    })
+                  );
+                })
+              );
+            }
+          }
         }
 
         // Otherwise just return the profile data
