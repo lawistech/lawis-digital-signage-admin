@@ -135,7 +135,9 @@ import { Subscription, filter } from 'rxjs';
             </h2>
           </div>
           <div class="p-6 space-y-4">
-            <button class="w-full bg-white border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 text-slate-700 p-4 rounded-lg flex items-center justify-between group transition-all duration-200 shadow-sm">
+            <button
+              (click)="navigateToAddUser()"
+              class="w-full bg-white border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 text-slate-700 p-4 rounded-lg flex items-center justify-between group transition-all duration-200 shadow-sm">
               <div class="flex items-center">
                 <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 mr-3 group-hover:scale-110 transition-transform duration-300">
                   <span class="material-icons">person_add</span>
@@ -145,17 +147,21 @@ import { Subscription, filter } from 'rxjs';
               <span class="material-icons text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all duration-200">arrow_forward</span>
             </button>
 
-            <button class="w-full bg-white border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 text-slate-700 p-4 rounded-lg flex items-center justify-between group transition-all duration-200 shadow-sm">
+            <button
+              (click)="navigateToScreens()"
+              class="w-full bg-white border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 text-slate-700 p-4 rounded-lg flex items-center justify-between group transition-all duration-200 shadow-sm">
               <div class="flex items-center">
                 <div class="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mr-3 group-hover:scale-110 transition-transform duration-300">
-                  <span class="material-icons">desktop_windows</span>
+                  <span class="material-icons">people</span>
                 </div>
-                <span class="font-medium">Manage Screens</span>
+                <span class="font-medium">Manage Users</span>
               </div>
               <span class="material-icons text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all duration-200">arrow_forward</span>
             </button>
 
-            <button class="w-full bg-white border border-slate-200 hover:border-purple-300 hover:bg-purple-50 text-slate-700 p-4 rounded-lg flex items-center justify-between group transition-all duration-200 shadow-sm">
+            <button
+              (click)="navigateToBilling()"
+              class="w-full bg-white border border-slate-200 hover:border-purple-300 hover:bg-purple-50 text-slate-700 p-4 rounded-lg flex items-center justify-between group transition-all duration-200 shadow-sm">
               <div class="flex items-center">
                 <div class="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 mr-3 group-hover:scale-110 transition-transform duration-300">
                   <span class="material-icons">receipt_long</span>
@@ -165,7 +171,9 @@ import { Subscription, filter } from 'rxjs';
               <span class="material-icons text-slate-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all duration-200">arrow_forward</span>
             </button>
 
-            <button class="w-full bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50 text-slate-700 p-4 rounded-lg flex items-center justify-between group transition-all duration-200 shadow-sm">
+            <button
+              (click)="navigateToSettings()"
+              class="w-full bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50 text-slate-700 p-4 rounded-lg flex items-center justify-between group transition-all duration-200 shadow-sm">
               <div class="flex items-center">
                 <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mr-3 group-hover:scale-110 transition-transform duration-300">
                   <span class="material-icons">analytics</span>
@@ -231,5 +239,29 @@ export class SuperAdminDashboardComponent implements OnInit, OnDestroy {
         this.loading = false;
       }
     });
+  }
+
+  // Quick Actions navigation methods
+  navigateToAddUser() {
+    this.router.navigate(['/super-admin/users']).then(() => {
+      // We need to use setTimeout to ensure the UsersComponent is fully initialized
+      setTimeout(() => {
+        // Use window.postMessage to communicate with the UsersComponent
+        window.postMessage({ action: 'openAddUserDialog' }, '*');
+      }, 100);
+    });
+  }
+
+  navigateToScreens() {
+    // For now, just navigate to users page since screens management is not implemented
+    this.router.navigate(['/super-admin/users']);
+  }
+
+  navigateToBilling() {
+    this.router.navigate(['/super-admin/billing']);
+  }
+
+  navigateToSettings() {
+    this.router.navigate(['/super-admin/settings']);
   }
 }

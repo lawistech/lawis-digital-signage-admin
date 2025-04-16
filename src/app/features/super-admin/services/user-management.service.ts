@@ -125,23 +125,58 @@ export class UserManagementService {
           const storageUsage = settings.storage_usage || 0;
           const maxStorage = settings.max_storage || 5000; // Default 5GB
 
-          // We'll get screen count separately in a future enhancement
-          const screenCount = Math.floor(Math.random() * (organization.max_screens || 1)); // Simulate random screen count for demo
+          // Generate a deterministic screen count based on user ID
+          // This ensures the same user always has the same screen count
+          let screenCount = 1; // Default to 1
+          if (user.id) {
+            // Use the first character of the user ID to determine screen count
+            const firstChar = user.id.charAt(0);
+            const charCode = firstChar.charCodeAt(0);
+            // Generate a number between 1 and max_screens
+            screenCount = (charCode % (organization.max_screens || 7)) + 1;
+            // Ensure it doesn't exceed max_screens
+            screenCount = Math.min(screenCount, organization.max_screens || 7);
+          }
 
-          // Simulate payment status for demo
+          // Generate deterministic payment status based on user ID
           const paymentStatuses = ['paid', 'pending', 'failed'];
-          const randomPaymentStatus = organization.subscription_status === 'active' ?
-            paymentStatuses[Math.floor(Math.random() * 2)] : // For active, either paid or pending
-            paymentStatuses[Math.floor(Math.random() * paymentStatuses.length)]; // Random for others
+          let paymentStatus = 'paid'; // Default
+          if (user.id) {
+            // Use the second character of the user ID to determine payment status
+            const secondChar = user.id.length > 1 ? user.id.charAt(1) : user.id.charAt(0);
+            const charCode = secondChar.charCodeAt(0);
+            // For active subscriptions, use either paid or pending (not failed)
+            if (organization.subscription_status === 'active') {
+              paymentStatus = paymentStatuses[charCode % 2]; // 0 = paid, 1 = pending
+            } else {
+              paymentStatus = paymentStatuses[charCode % 3]; // Any status
+            }
+          }
 
-          // Simulate renewal date for demo
+          // Generate deterministic renewal date based on user ID
           const today = new Date();
           const renewalDate = new Date(today);
-          renewalDate.setDate(today.getDate() + Math.floor(Math.random() * 30) + 1); // Random date in next 30 days
+          if (user.id) {
+            // Use the third character of the user ID to determine days until renewal
+            const thirdChar = user.id.length > 2 ? user.id.charAt(2) : user.id.charAt(0);
+            const charCode = thirdChar.charCodeAt(0);
+            // Generate a number between 1 and 30 for days until renewal
+            const daysUntilRenewal = (charCode % 30) + 1;
+            renewalDate.setDate(today.getDate() + daysUntilRenewal);
+          } else {
+            // Default to 30 days if no user ID
+            renewalDate.setDate(today.getDate() + 30);
+          }
 
-          // Simulate last active screen for demo
+          // Generate deterministic screen name based on user ID
           const screenNames = ['Lobby Display', 'Conference Room', 'Reception', 'Cafeteria', 'Main Entrance'];
-          const randomScreenName = screenNames[Math.floor(Math.random() * screenNames.length)];
+          let screenName = screenNames[0]; // Default
+          if (user.id) {
+            // Use the fourth character of the user ID to determine screen name
+            const fourthChar = user.id.length > 3 ? user.id.charAt(3) : user.id.charAt(0);
+            const charCode = fourthChar.charCodeAt(0);
+            screenName = screenNames[charCode % screenNames.length];
+          }
 
           return {
             id: user.id,
@@ -162,8 +197,8 @@ export class UserManagementService {
             max_screens: organization.max_screens || 1,
             storage_usage: storageUsage,
             max_storage: maxStorage,
-            payment_status: randomPaymentStatus as 'paid' | 'pending' | 'failed',
-            last_active_screen: randomScreenName
+            payment_status: paymentStatus as 'paid' | 'pending' | 'failed',
+            last_active_screen: screenName
           };
         });
       }),
@@ -551,23 +586,58 @@ export class UserManagementService {
           const storageUsage = settings.storage_usage || 0;
           const maxStorage = settings.max_storage || 5000; // Default 5GB
 
-          // We'll get screen count separately in a future enhancement
-          const screenCount = Math.floor(Math.random() * (organization.max_screens || 1)); // Simulate random screen count for demo
+          // Generate a deterministic screen count based on user ID
+          // This ensures the same user always has the same screen count
+          let screenCount = 1; // Default to 1
+          if (user.id) {
+            // Use the first character of the user ID to determine screen count
+            const firstChar = user.id.charAt(0);
+            const charCode = firstChar.charCodeAt(0);
+            // Generate a number between 1 and max_screens
+            screenCount = (charCode % (organization.max_screens || 7)) + 1;
+            // Ensure it doesn't exceed max_screens
+            screenCount = Math.min(screenCount, organization.max_screens || 7);
+          }
 
-          // Simulate payment status for demo
+          // Generate deterministic payment status based on user ID
           const paymentStatuses = ['paid', 'pending', 'failed'];
-          const randomPaymentStatus = organization.subscription_status === 'active' ?
-            paymentStatuses[Math.floor(Math.random() * 2)] : // For active, either paid or pending
-            paymentStatuses[Math.floor(Math.random() * paymentStatuses.length)]; // Random for others
+          let paymentStatus = 'paid'; // Default
+          if (user.id) {
+            // Use the second character of the user ID to determine payment status
+            const secondChar = user.id.length > 1 ? user.id.charAt(1) : user.id.charAt(0);
+            const charCode = secondChar.charCodeAt(0);
+            // For active subscriptions, use either paid or pending (not failed)
+            if (organization.subscription_status === 'active') {
+              paymentStatus = paymentStatuses[charCode % 2]; // 0 = paid, 1 = pending
+            } else {
+              paymentStatus = paymentStatuses[charCode % 3]; // Any status
+            }
+          }
 
-          // Simulate renewal date for demo
+          // Generate deterministic renewal date based on user ID
           const today = new Date();
           const renewalDate = new Date(today);
-          renewalDate.setDate(today.getDate() + Math.floor(Math.random() * 30) + 1); // Random date in next 30 days
+          if (user.id) {
+            // Use the third character of the user ID to determine days until renewal
+            const thirdChar = user.id.length > 2 ? user.id.charAt(2) : user.id.charAt(0);
+            const charCode = thirdChar.charCodeAt(0);
+            // Generate a number between 1 and 30 for days until renewal
+            const daysUntilRenewal = (charCode % 30) + 1;
+            renewalDate.setDate(today.getDate() + daysUntilRenewal);
+          } else {
+            // Default to 30 days if no user ID
+            renewalDate.setDate(today.getDate() + 30);
+          }
 
-          // Simulate last active screen for demo
+          // Generate deterministic screen name based on user ID
           const screenNames = ['Lobby Display', 'Conference Room', 'Reception', 'Cafeteria', 'Main Entrance'];
-          const randomScreenName = screenNames[Math.floor(Math.random() * screenNames.length)];
+          let screenName = screenNames[0]; // Default
+          if (user.id) {
+            // Use the fourth character of the user ID to determine screen name
+            const fourthChar = user.id.length > 3 ? user.id.charAt(3) : user.id.charAt(0);
+            const charCode = fourthChar.charCodeAt(0);
+            screenName = screenNames[charCode % screenNames.length];
+          }
 
           return {
             id: user.id,
@@ -588,8 +658,8 @@ export class UserManagementService {
             max_screens: organization.max_screens || 1,
             storage_usage: storageUsage,
             max_storage: maxStorage,
-            payment_status: randomPaymentStatus as 'paid' | 'pending' | 'failed',
-            last_active_screen: randomScreenName
+            payment_status: paymentStatus as 'paid' | 'pending' | 'failed',
+            last_active_screen: screenName
           };
         });
       }),
