@@ -13,12 +13,14 @@ import { ArchiveComponent } from './components/archive/archive.component';
 
 // Services
 import { SuperAdminStatsService } from './services/super-admin-stats.service';
+import { ActivityLogService } from './services/activity-log.service';
 
 // Guards
 import { SuperAdminGuard } from '../../core/guards/super-admin.guard';
 
-// Activity Log Component
+// Activity Log Components
 import { ActivityLogComponent } from './components/activity-log/activity-log.component';
+import { ActivityLogsComponent } from './components/activity-logs/activity-logs.component';
 
 // User Management Components
 import { AddUserDialogComponent } from './components/users/add-user-dialog.component';
@@ -40,7 +42,8 @@ const routes: Routes = [
       { path: 'users', component: UsersComponent },
       { path: 'billing', component: BillingComponent },
       { path: 'settings', component: SettingsComponent },
-      { path: 'archive', component: ArchiveComponent }
+      { path: 'archive', component: ArchiveComponent },
+      { path: 'activity-logs', component: ActivityLogsComponent }
     ]
   }
 ];
@@ -50,6 +53,7 @@ const routes: Routes = [
     SuperAdminLayoutComponent,
     SuperAdminDashboardComponent,
     ActivityLogComponent,
+    ActivityLogsComponent,
     UsersComponent,
     BillingComponent,
     SettingsComponent,
@@ -67,7 +71,8 @@ const routes: Routes = [
   ],
   providers: [
     SuperAdminStatsService,
-    UserManagementService
+    UserManagementService,
+    ActivityLogService
   ]
 })
 export class SuperAdminModule { }

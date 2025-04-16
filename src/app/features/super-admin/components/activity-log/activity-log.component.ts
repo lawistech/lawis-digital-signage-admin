@@ -1,17 +1,6 @@
-import { Component, OnInit } from '@angular/core';
-import { Observable, of } from 'rxjs';
-import { SupabaseService } from '../../../../core/services/supabase.service';
-
-interface ActivityLog {
-  id: string;
-  user_id: string;
-  user_email: string;
-  action: string;
-  entity_type: string;
-  entity_id: string;
-  details: any;
-  created_at: string;
-}
+import { Component, OnInit, Input } from '@angular/core';
+import { finalize } from 'rxjs';
+import { ActivityLogService, ActivityLog } from '../../services/activity-log.service';
 
 @Component({
   selector: 'app-activity-log',
@@ -43,73 +32,30 @@ interface ActivityLog {
   `
 })
 export class ActivityLogComponent implements OnInit {
+  @Input() limit: number = 10;
   activityLogs: ActivityLog[] = [];
   loading = true;
 
-  constructor(private supabase: SupabaseService) {}
+  constructor(private activityLogService: ActivityLogService) {}
 
   ngOnInit() {
     this.loadActivityLogs();
   }
 
   private loadActivityLogs() {
-    // First check if the activity_logs table exists
-    this.supabase.supabaseClient
-      .from('activity_logs')
-      .select('*', { count: 'exact', head: true })
-      .then(({ count, error }) => {
-        this.loading = false;
-
-        // If there's an error or no data, create some mock activity logs
-        if (error || count === 0) {
-          console.log('Using mock activity logs data');
-          this.createMockActivityLogs();
-          return;
+    this.loading = true;
+    this.activityLogService.getRecentActivityLogs(this.limit)
+      .pipe(
+        finalize(() => this.loading = false)
+      )
+      .subscribe({
+        next: (logs) => {
+          this.activityLogs = logs;
+        },
+        error: (error) => {
+          console.error('Error loading activity logs:', error);
         }
-
-        // If the table exists and has data, load the real data
-        this.supabase.supabaseClient
-          .from('activity_logs')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(10)
-          .then(({ data, error }) => {
-            if (error) {
-              console.error('Error loading activity logs:', error);
-              this.createMockActivityLogs();
-              return;
-            }
-            this.activityLogs = data as ActivityLog[];
-          });
       });
-  }
-
-  private createMockActivityLogs() {
-    // Create some mock activity logs for demonstration
-    const actions = ['create', 'update', 'delete', 'login', 'logout'];
-    const entityTypes = ['user', 'screen', 'organization', 'content', 'schedule'];
-    const mockLogs: ActivityLog[] = [];
-
-    // Generate 10 random activity logs
-    for (let i = 0; i < 10; i++) {
-      const action = actions[Math.floor(Math.random() * actions.length)];
-      const entityType = entityTypes[Math.floor(Math.random() * entityTypes.length)];
-      const date = new Date();
-      date.setMinutes(date.getMinutes() - i * 30); // Space them out by 30 minutes
-
-      mockLogs.push({
-        id: `mock-${i}`,
-        user_id: 'mock-user-id',
-        user_email: 'admin@example.com',
-        action: action,
-        entity_type: entityType,
-        entity_id: `${entityType}-${Math.floor(Math.random() * 100)}`,
-        details: { mock: true },
-        created_at: date.toISOString()
-      });
-    }
-
-    this.activityLogs = mockLogs;
   }
 
   getActionIcon(action: string): string {

@@ -116,7 +116,9 @@ import { Subscription, filter } from 'rxjs';
               <span class="material-icons mr-2 text-indigo-600">history</span>
               Recent Activity
             </h2>
-            <button class="text-sm text-indigo-600 hover:text-indigo-800 flex items-center transition-colors duration-200">
+            <button
+              (click)="navigateToActivityLogs()"
+              class="text-sm text-indigo-600 hover:text-indigo-800 flex items-center transition-colors duration-200">
               <span>View All</span>
               <span class="material-icons text-sm ml-1">arrow_forward</span>
             </button>
@@ -263,5 +265,9 @@ export class SuperAdminDashboardComponent implements OnInit, OnDestroy {
 
   navigateToSettings() {
     this.router.navigate(['/super-admin/settings']);
+  }
+
+  navigateToActivityLogs() {
+    this.router.navigate(['/super-admin/activity-logs']);
   }
 }
