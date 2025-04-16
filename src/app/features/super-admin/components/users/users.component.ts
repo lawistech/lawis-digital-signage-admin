@@ -1,5 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Router, NavigationEnd } from '@angular/router';
 import { UserManagementService, User } from '../../services/user-management.service';
+import { Subscription, filter } from 'rxjs';
 
 @Component({
   selector: 'app-users',
@@ -471,7 +473,7 @@ import { UserManagementService, User } from '../../services/user-management.serv
     ></app-bulk-action-dialog>
   `
 })
-export class UsersComponent implements OnInit {
+export class UsersComponent implements OnInit, OnDestroy {
   users: User[] = [];
   isLoading = false;
   errorMessage = '';
@@ -496,7 +498,12 @@ export class UsersComponent implements OnInit {
   showBulkActionDialog = false;
   bulkActionType: 'role' | 'status' = 'role';
 
-  constructor(private userService: UserManagementService) {}
+  private routerSubscription: Subscription | null = null;
+
+  constructor(
+    private userService: UserManagementService,
+    private router: Router
+  ) {}
 
   loadUsers(): void {
     this.isLoading = true;
@@ -536,7 +543,26 @@ export class UsersComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Initial data load
     this.loadUsers();
+
+    // Subscribe to router events to reload data when navigating to this component
+    this.routerSubscription = this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd)
+    ).subscribe((event: any) => {
+      // Check if we're navigating to the users page
+      if (event.url.includes('/super-admin/users')) {
+        console.log('Navigation to users page detected, reloading data');
+        this.loadUsers();
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    // Clean up subscriptions to prevent memory leaks
+    if (this.routerSubscription) {
+      this.routerSubscription.unsubscribe();
+    }
   }
 
   resetFilters(): void {

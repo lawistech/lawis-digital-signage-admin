@@ -1,5 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Router, NavigationEnd } from '@angular/router';
 import { SuperAdminStatsService, DashboardStats } from '../../services/super-admin-stats.service';
+import { Subscription, filter } from 'rxjs';
 
 @Component({
   selector: 'app-super-admin-dashboard',
@@ -178,7 +180,7 @@ import { SuperAdminStatsService, DashboardStats } from '../../services/super-adm
     </div>
   `
 })
-export class SuperAdminDashboardComponent implements OnInit {
+export class SuperAdminDashboardComponent implements OnInit, OnDestroy {
   stats: DashboardStats = {
     totalScreens: 0,
     totalUsers: 0,
@@ -187,10 +189,34 @@ export class SuperAdminDashboardComponent implements OnInit {
   };
   loading = false;
 
-  constructor(private statsService: SuperAdminStatsService) {}
+  private routerSubscription: Subscription | null = null;
+
+  constructor(
+    private statsService: SuperAdminStatsService,
+    private router: Router
+  ) {}
 
   ngOnInit() {
+    // Initial data load
     this.loadDashboardStats();
+
+    // Subscribe to router events to reload data when navigating to this component
+    this.routerSubscription = this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd)
+    ).subscribe((event: any) => {
+      // Check if we're navigating to the dashboard page
+      if (event.url.includes('/super-admin/dashboard')) {
+        console.log('Navigation to dashboard page detected, reloading data');
+        this.loadDashboardStats();
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    // Clean up subscriptions to prevent memory leaks
+    if (this.routerSubscription) {
+      this.routerSubscription.unsubscribe();
+    }
   }
 
   loadDashboardStats() {
