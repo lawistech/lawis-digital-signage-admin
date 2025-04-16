@@ -122,6 +122,19 @@ import { UserManagementService, User } from '../../services/user-management.serv
                 </select>
               </div>
 
+              <!-- Payment Status -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
+                <select
+                  formControlName="paymentStatus"
+                  class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-all"
+                >
+                  <option value="paid">Paid</option>
+                  <option value="pending">Pending</option>
+                  <option value="failed">Failed</option>
+                </select>
+              </div>
+
               <!-- Resource Limits -->
               <div class="grid grid-cols-2 gap-4 mt-4">
                 <!-- Max Screens -->
@@ -273,6 +286,7 @@ export class EditUserDialogComponent implements OnInit {
       role: [this.user.role, Validators.required],
       subscriptionTier: [this.user.subscription_tier || 'free'],
       subscriptionStatus: [this.user.subscription_status || 'inactive'],
+      paymentStatus: [this.user.payment_status || 'paid'],
       maxScreens: [this.user.max_screens || 1, [Validators.required, Validators.min(1), Validators.max(100)]],
       maxStorage: [this.convertBytesToGB(this.user.max_storage || 5242880), [Validators.required, Validators.min(1), Validators.max(1000)]]
     });
@@ -313,6 +327,7 @@ export class EditUserDialogComponent implements OnInit {
       role: this.userForm.value.role,
       subscription_tier: this.userForm.value.subscriptionTier,
       subscription_status: this.userForm.value.subscriptionStatus,
+      payment_status: this.userForm.value.paymentStatus,
       max_screens: this.userForm.value.maxScreens,
       max_storage: this.convertGBToBytes(this.userForm.value.maxStorage)
     };
@@ -332,6 +347,7 @@ export class EditUserDialogComponent implements OnInit {
           // Use the updated values from the form for subscription and resource info
           subscription_tier: userData.subscription_tier || this.user.subscription_tier,
           subscription_status: userData.subscription_status || this.user.subscription_status,
+          payment_status: userData.payment_status || this.user.payment_status,
           max_screens: userData.max_screens || this.user.max_screens,
           max_storage: userData.max_storage || this.user.max_storage
         };

@@ -31,12 +31,15 @@ import { User } from '../../services/user-management.service';
               <p class="text-sm text-gray-500 mb-2">{{ user.email }}</p>
               <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full mb-3"
                     [ngClass]="{
-                      'bg-purple-100 text-purple-800': user.role === 'super_admin',
-                      'bg-blue-100 text-blue-800': user.role === 'admin',
-                      'bg-green-100 text-green-800': user.role === 'user'
+                      'bg-green-100 text-green-800': user.payment_status === 'paid',
+                      'bg-yellow-100 text-yellow-800': user.payment_status === 'pending',
+                      'bg-red-100 text-red-800': user.payment_status === 'failed'
                     }">
-                {{ user.role }}
+                {{ user.payment_status | titlecase }}
               </span>
+              <div class="text-xs text-gray-500 mb-1">
+                Role: {{ user.role }}
+              </div>
               <div class="text-xs text-gray-500">
                 Created {{ formatDate(user.created_at) }}
               </div>

@@ -214,6 +214,15 @@ import { Subscription, filter } from 'rxjs';
                       Change Status
                     </div>
                   </button>
+                  <button
+                    (click)="performBulkAction('changePayment'); showBulkActionMenu = false"
+                    class="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors duration-150"
+                  >
+                    <div class="flex items-center">
+                      <span class="material-icons text-indigo-500 mr-2 text-sm">payments</span>
+                      Change Payment Status
+                    </div>
+                  </button>
                   <div class="border-t border-slate-200 my-1"></div>
 
                 </div>
@@ -272,7 +281,7 @@ import { Subscription, filter } from 'rxjs';
                   <span class="font-semibold">User & Subscription</span>
                 </div>
               </th>
-              <th class="px-6 py-4 font-semibold">Role</th>
+              <th class="px-6 py-4 font-semibold">Payment Status</th>
               <th class="px-6 py-4 font-semibold">Resources</th>
               <th class="px-6 py-4 font-semibold">Last Active</th>
               <th class="px-6 py-4 text-right font-semibold">Actions</th>
@@ -320,20 +329,7 @@ import { Subscription, filter } from 'rxjs';
                         </div>
                       </div>
 
-                      <!-- Payment Status if available -->
-                      <div *ngIf="user.payment_status" class="flex items-center text-xs">
-                        <span class="material-icons text-xs mr-1"
-                              [ngClass]="{
-                                'text-green-600': user.payment_status === 'paid',
-                                'text-yellow-600': user.payment_status === 'pending',
-                                'text-red-600': user.payment_status === 'failed'
-                              }">payments</span>
-                        <span [ngClass]="{
-                                'text-green-600': user.payment_status === 'paid',
-                                'text-yellow-600': user.payment_status === 'pending',
-                                'text-red-600': user.payment_status === 'failed'
-                              }">{{ user.payment_status | titlecase }}</span>
-                      </div>
+
                     </div>
                   </div>
                 </div>
@@ -341,11 +337,11 @@ import { Subscription, filter } from 'rxjs';
               <td class="px-6 py-4 whitespace-nowrap">
                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
                       [ngClass]="{
-                        'bg-purple-100 text-purple-800': user.role === 'super_admin',
-                        'bg-blue-100 text-blue-800': user.role === 'admin',
-                        'bg-green-100 text-green-800': user.role === 'user'
+                        'bg-green-100 text-green-800': user.payment_status === 'paid',
+                        'bg-yellow-100 text-yellow-800': user.payment_status === 'pending',
+                        'bg-red-100 text-red-800': user.payment_status === 'failed'
                       }">
-                  {{ user.role }}
+                  {{ user.payment_status | titlecase }}
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
@@ -496,7 +492,7 @@ export class UsersComponent implements OnInit, OnDestroy {
   showExportMenu = false;
   isExporting = false;
   showBulkActionDialog = false;
-  bulkActionType: 'role' | 'status' = 'role';
+  bulkActionType: 'role' | 'status' | 'payment' = 'role';
 
   private routerSubscription: Subscription | null = null;
 
@@ -556,12 +552,27 @@ export class UsersComponent implements OnInit, OnDestroy {
         this.loadUsers();
       }
     });
+
+    // Listen for messages from other components
+    window.addEventListener('message', this.handleWindowMessages.bind(this));
   }
 
   ngOnDestroy(): void {
     // Clean up subscriptions to prevent memory leaks
     if (this.routerSubscription) {
       this.routerSubscription.unsubscribe();
+    }
+
+    // Remove event listener
+    window.removeEventListener('message', this.handleWindowMessages.bind(this));
+  }
+
+  // Handle messages from other components
+  handleWindowMessages(event: MessageEvent): void {
+    // Check if the message is from our application
+    if (event.data && event.data.action === 'openAddUserDialog') {
+      console.log('Received message to open Add User dialog');
+      this.showAddUserDialog = true;
     }
   }
 
@@ -734,6 +745,10 @@ export class UsersComponent implements OnInit, OnDestroy {
         this.bulkActionType = 'status';
         this.showBulkActionDialog = true;
         break;
+      case 'changePayment':
+        this.bulkActionType = 'payment';
+        this.showBulkActionDialog = true;
+        break;
       default:
         break;
     }
@@ -752,6 +767,8 @@ export class UsersComponent implements OnInit, OnDestroy {
         userData.role = action.value;
       } else if (action.type === 'status') {
         userData.subscription_status = action.value;
+      } else if (action.type === 'payment') {
+        userData.payment_status = action.value as 'paid' | 'pending' | 'failed';
       }
 
       return this.userService.updateUser(userId, userData);

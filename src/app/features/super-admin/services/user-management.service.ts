@@ -300,6 +300,9 @@ export class UserManagementService {
       organizationUpdateData.subscription_status = userData.subscription_status;
     }
 
+    // We don't actually store payment_status in the database since it's simulated
+    // In a real app, you would add code here to update the payment status
+
     if (userData.max_screens !== undefined) {
       organizationUpdateData.max_screens = userData.max_screens;
     }

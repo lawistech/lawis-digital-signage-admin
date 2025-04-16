@@ -9,7 +9,10 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
         <!-- Header with improved styling - fixed at top -->
         <div class="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10">
           <div class="flex items-center">
-            <span class="material-icons text-blue-600 mr-2">{{ actionType === 'role' ? 'manage_accounts' : 'subscriptions' }}</span>
+            <span class="material-icons text-blue-600 mr-2">{{
+              actionType === 'role' ? 'manage_accounts' :
+              actionType === 'status' ? 'subscriptions' : 'payments'
+            }}</span>
             <h2 class="text-xl font-bold text-gray-800">{{ title }}</h2>
           </div>
           <button (click)="onCancel()" class="text-gray-500 hover:text-gray-700 transition-colors">
@@ -54,6 +57,20 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
             </select>
           </div>
 
+          <div *ngIf="actionType === 'payment'">
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Payment Status
+            </label>
+            <select
+              formControlName="payment"
+              class="w-full rounded-md border-gray-300"
+            >
+              <option value="paid">Paid</option>
+              <option value="pending">Pending</option>
+              <option value="failed">Failed</option>
+            </select>
+          </div>
+
           <div class="mt-2 text-sm text-gray-500">
             This action will be applied to {{ userCount }} selected users.
           </div>
@@ -85,7 +102,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
   `
 })
 export class BulkActionDialogComponent implements OnInit {
-  @Input() actionType: 'role' | 'status' = 'role';
+  @Input() actionType: 'role' | 'status' | 'payment' = 'role';
   @Input() userCount: number = 0;
   @Output() close = new EventEmitter<void>();
   @Output() applyAction = new EventEmitter<{type: string, value: string}>();
@@ -95,13 +112,16 @@ export class BulkActionDialogComponent implements OnInit {
   errorMessage = '';
 
   get title(): string {
-    return this.actionType === 'role' ? 'Change Role' : 'Change Subscription Status';
+    if (this.actionType === 'role') return 'Change Role';
+    if (this.actionType === 'status') return 'Change Subscription Status';
+    return 'Change Payment Status';
   }
 
   constructor(private fb: FormBuilder) {
     this.actionForm = this.fb.group({
       role: ['user', this.actionType === 'role' ? Validators.required : null],
-      status: ['active', this.actionType === 'status' ? Validators.required : null]
+      status: ['active', this.actionType === 'status' ? Validators.required : null],
+      payment: ['paid', this.actionType === 'payment' ? Validators.required : null]
     });
   }
 
@@ -113,9 +133,14 @@ export class BulkActionDialogComponent implements OnInit {
     this.isSubmitting = true;
     this.errorMessage = '';
 
-    const value = this.actionType === 'role'
-      ? this.actionForm.value.role
-      : this.actionForm.value.status;
+    let value;
+    if (this.actionType === 'role') {
+      value = this.actionForm.value.role;
+    } else if (this.actionType === 'status') {
+      value = this.actionForm.value.status;
+    } else {
+      value = this.actionForm.value.payment;
+    }
 
     this.applyAction.emit({
       type: this.actionType,
