@@ -28,10 +28,14 @@ import { User, UserManagementService } from '../../services/user-management.serv
                 {{ getInitials(user.full_name || user.email) }}
               </div>
               <h3 class="text-lg font-medium text-gray-900">{{ user.full_name || 'N/A' }}</h3>
-              <a href="mailto:{{ user.email }}" class="text-sm text-blue-600 hover:text-blue-800 mb-2 flex items-center justify-center" title="Click to email this user">
-                <span class="material-icons text-sm mr-1">email</span>
-                {{ user.email }}
-              </a>
+
+              <!-- Email with improved visibility -->
+              <div class="my-2 p-2 bg-blue-50 rounded-md border border-blue-100">
+                <a href="mailto:{{ user.email }}" class="text-sm text-blue-600 hover:text-blue-800 flex items-center" title="Click to email this user">
+                  <span class="material-icons text-sm mr-1">email</span>
+                  <span class="font-medium">{{ user.email }}</span>
+                </a>
+              </div>
               <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full mb-3"
                     [ngClass]="{
                       'bg-green-100 text-green-800': user.payment_status === 'paid',
@@ -56,13 +60,6 @@ import { User, UserManagementService } from '../../services/user-management.serv
                 >
                   <span class="material-icons text-sm mr-1">edit</span>
                   Edit
-                </button>
-                <button
-                  (click)="onDelete()"
-                  class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center text-sm"
-                >
-                  <span class="material-icons text-sm mr-1">delete</span>
-                  Delete
                 </button>
               </div>
             </div>

@@ -675,9 +675,24 @@ export class UsersComponent implements OnInit, OnDestroy {
     }
   }
 
-  onUserCreated(_: any): void {
-    // Reload the users list to include the new user
-    this.loadUsers();
+  onUserCreated(user: User): void {
+    console.log('UsersComponent: User created:', user);
+
+    // Add the new user to the beginning of the list without reloading
+    if (user && user.id) {
+      // If the user is a simulated user (starts with 'user_'), add it to the list directly
+      if (user.id.toString().startsWith('user_')) {
+        console.log('UsersComponent: Adding simulated user to list');
+        this.users = [user, ...this.users];
+      } else {
+        // Otherwise reload the list from the server
+        console.log('UsersComponent: Reloading users after real user creation');
+        this.loadUsers();
+      }
+    } else {
+      // Fallback to reloading if we don't have a valid user object
+      this.loadUsers();
+    }
   }
 
   editUser(user: User): void {

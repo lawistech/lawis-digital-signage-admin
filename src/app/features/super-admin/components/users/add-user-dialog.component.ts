@@ -168,7 +168,14 @@ export class AddUserDialogComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (this.userForm.invalid) return;
+    if (this.userForm.invalid) {
+      // Mark all form controls as touched to show validation errors
+      Object.keys(this.userForm.controls).forEach(key => {
+        const control = this.userForm.get(key);
+        control?.markAsTouched();
+      });
+      return;
+    }
 
     this.isSubmitting = true;
     this.errorMessage = '';
@@ -181,15 +188,23 @@ export class AddUserDialogComponent implements OnInit {
       organization_id: this.userForm.value.organizationId
     };
 
+    console.log('AddUserDialog: Submitting user data');
+
     this.userService.createUser(userData).subscribe({
       next: (user) => {
+        console.log('AddUserDialog: User created successfully', user.id);
         this.isSubmitting = false;
+
+        // Show a success message
+        alert(`User ${userData.full_name} (${userData.email}) has been created successfully in simulation mode.\n\nNote: In a production environment, this would create a real user in the database.`);
+
+        // Emit the user and close the dialog
         this.userCreated.emit(user);
         this.close.emit();
       },
       error: (error) => {
         this.isSubmitting = false;
-        console.error('Error creating user:', error);
+        console.error('AddUserDialog: Error creating user:', error);
         this.errorMessage = error.message || 'Failed to create user. Please try again.';
 
         // Scroll to the top of the form to show the error message
