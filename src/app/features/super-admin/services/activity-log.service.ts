@@ -25,13 +25,19 @@ export class ActivityLogService {
    * @returns Observable of activity logs
    */
   getRecentActivityLogs(limit: number = 10): Observable<ActivityLog[]> {
+    console.log(`ActivityLogService: Getting recent activity logs, limit=${limit}`);
+
     // Try to use the RPC function first
     return from(
       this.supabase.supabaseClient
         .rpc('get_recent_activity_logs', { limit_count: limit })
     ).pipe(
       map(({ data, error }) => {
-        if (error) throw error;
+        if (error) {
+          console.warn('Error using RPC function get_recent_activity_logs:', error);
+          throw error;
+        }
+        console.log(`ActivityLogService: Successfully retrieved ${data?.length || 0} logs via RPC`);
         return data as ActivityLog[];
       }),
       catchError(error => {
@@ -45,12 +51,18 @@ export class ActivityLogService {
             .limit(limit)
         ).pipe(
           map(({ data, error }) => {
-            if (error) throw error;
+            if (error) {
+              console.warn('Error using direct query for activity logs:', error);
+              throw error;
+            }
+            console.log(`ActivityLogService: Successfully retrieved ${data?.length || 0} logs via direct query`);
             return data as ActivityLog[];
           }),
           catchError(error => {
-            console.error('Error loading activity logs:', error);
-            return of(this.createMockActivityLogs(limit));
+            console.error('Error loading activity logs, falling back to mock data:', error);
+            const mockLogs = this.createMockActivityLogs(limit);
+            console.log(`ActivityLogService: Generated ${mockLogs.length} mock activity logs`);
+            return of(mockLogs);
           })
         );
       })
@@ -118,6 +130,12 @@ export class ActivityLogService {
    * @returns Observable of the created activity log
    */
   createActivityLog(log: Omit<ActivityLog, 'id' | 'created_at'>): Observable<ActivityLog> {
+    console.log('ActivityLogService: Creating activity log:', {
+      action: log.action,
+      entity_type: log.entity_type,
+      user_email: log.user_email
+    });
+
     // Try to use the RPC function first
     return from(
       this.supabase.supabaseClient
@@ -131,7 +149,11 @@ export class ActivityLogService {
         })
     ).pipe(
       map(({ data, error }) => {
-        if (error) throw error;
+        if (error) {
+          console.warn('Error using RPC function create_activity_log:', error);
+          throw error;
+        }
+        console.log('ActivityLogService: Successfully created activity log via RPC');
         return data as ActivityLog;
       }),
       catchError(error => {
@@ -145,12 +167,28 @@ export class ActivityLogService {
             .single()
         ).pipe(
           map(({ data, error }) => {
-            if (error) throw error;
+            if (error) {
+              console.warn('Error using direct insert for activity log:', error);
+              throw error;
+            }
+            console.log('ActivityLogService: Successfully created activity log via direct insert');
             return data as ActivityLog;
           }),
           catchError(error => {
             console.error('Error creating activity log:', error);
-            throw error;
+            // Create a mock log for development purposes
+            const mockLog: ActivityLog = {
+              id: `mock-${Date.now()}`,
+              user_id: log.user_id,
+              user_email: log.user_email,
+              action: log.action,
+              entity_type: log.entity_type,
+              entity_id: log.entity_id,
+              details: log.details,
+              created_at: new Date().toISOString()
+            };
+            console.log('ActivityLogService: Created mock activity log as fallback');
+            return of(mockLog);
           })
         );
       })

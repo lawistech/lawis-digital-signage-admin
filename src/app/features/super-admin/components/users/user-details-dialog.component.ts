@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { User } from '../../services/user-management.service';
+import { User, UserManagementService } from '../../services/user-management.service';
 
 @Component({
   selector: 'app-user-details-dialog',
@@ -28,7 +28,10 @@ import { User } from '../../services/user-management.service';
                 {{ getInitials(user.full_name || user.email) }}
               </div>
               <h3 class="text-lg font-medium text-gray-900">{{ user.full_name || 'N/A' }}</h3>
-              <p class="text-sm text-gray-500 mb-2">{{ user.email }}</p>
+              <a href="mailto:{{ user.email }}" class="text-sm text-blue-600 hover:text-blue-800 mb-2 flex items-center justify-center" title="Click to email this user">
+                <span class="material-icons text-sm mr-1">email</span>
+                {{ user.email }}
+              </a>
               <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full mb-3"
                     [ngClass]="{
                       'bg-green-100 text-green-800': user.payment_status === 'paid',
@@ -46,13 +49,22 @@ import { User } from '../../services/user-management.service';
               <div class="text-xs text-gray-500">
                 Last active {{ getTimeAgo(user.last_sign_in_at) }}
               </div>
-              <button
-                (click)="onEdit()"
-                class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center text-sm"
-              >
-                <span class="material-icons text-sm mr-1">edit</span>
-                Edit User
-              </button>
+              <div class="flex space-x-2 mt-4">
+                <button
+                  (click)="onEdit()"
+                  class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center text-sm"
+                >
+                  <span class="material-icons text-sm mr-1">edit</span>
+                  Edit
+                </button>
+                <button
+                  (click)="onDelete()"
+                  class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center text-sm"
+                >
+                  <span class="material-icons text-sm mr-1">delete</span>
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
 
@@ -159,6 +171,11 @@ export class UserDetailsDialogComponent {
   @Input() user!: User;
   @Output() close = new EventEmitter<void>();
   @Output() edit = new EventEmitter<void>();
+  @Output() deleted = new EventEmitter<void>();
+
+  isDeleting = false;
+
+  constructor(private userService: UserManagementService) {}
 
   getInitials(name: string): string {
     if (!name) return '?';
@@ -225,5 +242,23 @@ export class UserDetailsDialogComponent {
 
   onEdit(): void {
     this.edit.emit();
+  }
+
+  onDelete(): void {
+    if (confirm(`Are you sure you want to delete user ${this.user.full_name || this.user.email}? This action cannot be undone.`)) {
+      this.isDeleting = true;
+      this.userService.deleteUser(this.user.id, this.user.email).subscribe({
+        next: () => {
+          this.isDeleting = false;
+          this.deleted.emit();
+          this.close.emit();
+        },
+        error: (error) => {
+          this.isDeleting = false;
+          console.error('Error deleting user:', error);
+          alert('Failed to delete user. Please try again.');
+        }
+      });
+    }
   }
 }

@@ -1,7 +1,9 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
 import { SuperAdminStatsService, DashboardStats } from '../../services/super-admin-stats.service';
 import { Subscription, filter } from 'rxjs';
+import { EventBusService } from '../../services/event-bus.service';
+import { ActivityLogComponent } from '../activity-log/activity-log.component';
 
 @Component({
   selector: 'app-super-admin-dashboard',
@@ -124,7 +126,7 @@ import { Subscription, filter } from 'rxjs';
             </button>
           </div>
           <div class="p-6">
-            <app-activity-log></app-activity-log>
+            <app-activity-log #activityLog></app-activity-log>
           </div>
         </div>
 
@@ -191,6 +193,8 @@ import { Subscription, filter } from 'rxjs';
   `
 })
 export class SuperAdminDashboardComponent implements OnInit, OnDestroy {
+  @ViewChild('activityLog') activityLogComponent!: ActivityLogComponent;
+
   stats: DashboardStats = {
     totalScreens: 0,
     totalUsers: 0,
@@ -200,15 +204,27 @@ export class SuperAdminDashboardComponent implements OnInit, OnDestroy {
   loading = false;
 
   private routerSubscription: Subscription | null = null;
+  private eventSubscription: Subscription | null = null;
 
   constructor(
     private statsService: SuperAdminStatsService,
-    private router: Router
+    private router: Router,
+    private eventBus: EventBusService
   ) {}
 
   ngOnInit() {
+    console.log('Dashboard: Initializing');
     // Initial data load
     this.loadDashboardStats();
+
+    // Ensure the activity log component is initialized
+    setTimeout(() => {
+      if (this.activityLogComponent) {
+        console.log('Dashboard: Activity log component is available');
+      } else {
+        console.warn('Dashboard: Activity log component not available after initialization');
+      }
+    }, 1000);
 
     // Subscribe to router events to reload data when navigating to this component
     this.routerSubscription = this.router.events.pipe(
@@ -220,6 +236,28 @@ export class SuperAdminDashboardComponent implements OnInit, OnDestroy {
         this.loadDashboardStats();
       }
     });
+
+    // Subscribe to activity log events
+    this.eventSubscription = this.eventBus.on('activity-logged').subscribe((event) => {
+      console.log('Dashboard: Received activity-logged event', event);
+
+      // Check if the activity log component is available
+      if (this.activityLogComponent) {
+        console.log('Dashboard: Refreshing activity log component');
+        this.activityLogComponent.refreshLogs();
+      } else {
+        console.warn('Dashboard: Activity log component not available yet');
+
+        // Try to find it manually as a fallback
+        setTimeout(() => {
+          const logComponent = document.querySelector('app-activity-log');
+          if (logComponent) {
+            console.log('Dashboard: Found activity log component via DOM, refreshing');
+            this.loadDashboardStats();
+          }
+        }, 500);
+      }
+    });
   }
 
   ngOnDestroy(): void {
@@ -227,20 +265,37 @@ export class SuperAdminDashboardComponent implements OnInit, OnDestroy {
     if (this.routerSubscription) {
       this.routerSubscription.unsubscribe();
     }
+    if (this.eventSubscription) {
+      this.eventSubscription.unsubscribe();
+    }
   }
 
   loadDashboardStats() {
+    console.log('Dashboard: Loading dashboard stats');
     this.loading = true;
     this.statsService.getDashboardStats().subscribe({
       next: (stats) => {
         this.stats = stats;
         this.loading = false;
+
+        // Also refresh the activity logs when dashboard stats are loaded
+        this.refreshActivityLogs();
       },
       error: (error) => {
         console.error('Error loading dashboard stats:', error);
         this.loading = false;
       }
     });
+  }
+
+  // Helper method to refresh activity logs
+  refreshActivityLogs() {
+    console.log('Dashboard: Manually refreshing activity logs');
+    if (this.activityLogComponent) {
+      this.activityLogComponent.refreshLogs();
+    } else {
+      console.warn('Dashboard: Cannot refresh activity logs - component not available');
+    }
   }
 
   // Quick Actions navigation methods

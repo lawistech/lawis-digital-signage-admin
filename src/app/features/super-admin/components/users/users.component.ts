@@ -457,6 +457,7 @@ import { Subscription, filter } from 'rxjs';
       [user]="selectedUser"
       (close)="showUserDetailsDialog = false"
       (edit)="onEditFromDetails()"
+      (deleted)="onUserDeleted()"
     ></app-user-details-dialog>
 
     <!-- Bulk Action Dialog -->
@@ -703,6 +704,12 @@ export class UsersComponent implements OnInit, OnDestroy {
     // Keep the selected user but switch from details to edit dialog
     this.showUserDetailsDialog = false;
     this.showEditUserDialog = true;
+  }
+
+  onUserDeleted(): void {
+    // Reload the users list after a user is deleted
+    this.loadUsers();
+    this.selectedUser = null;
   }
 
 

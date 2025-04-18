@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { UserManagementService, User } from '../../services/user-management.service';
+import { EventBusService } from '../../services/event-bus.service';
 
 @Component({
   selector: 'app-edit-user-dialog',
@@ -59,12 +60,21 @@ import { UserManagementService, User } from '../../services/user-management.serv
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                   Email
                 </label>
-                <input
-                  type="email"
-                  formControlName="email"
-                  class="w-full rounded-md border-gray-300 bg-gray-50 shadow-sm"
-                  [disabled]="true"
-                >
+                <div class="relative">
+                  <input
+                    type="email"
+                    formControlName="email"
+                    class="w-full rounded-md border-gray-300 bg-gray-50 shadow-sm pr-10"
+                    [disabled]="true"
+                  >
+                  <a
+                    [href]="'mailto:' + user.email"
+                    class="absolute inset-y-0 right-0 flex items-center pr-3 text-blue-600 hover:text-blue-800"
+                    title="Click to email this user"
+                  >
+                    <span class="material-icons text-sm">email</span>
+                  </a>
+                </div>
                 <div class="text-xs text-gray-500 mt-1 flex items-center">
                   <span class="material-icons text-xs mr-1">info</span>
                   Email cannot be changed
@@ -272,7 +282,8 @@ export class EditUserDialogComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    private userService: UserManagementService
+    private userService: UserManagementService,
+    private eventBus: EventBusService
   ) {}
 
   ngOnInit(): void {

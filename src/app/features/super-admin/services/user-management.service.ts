@@ -1,7 +1,9 @@
 import { Injectable } from '@angular/core';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { Observable, from, throwError, of } from 'rxjs';
-import { map, catchError, switchMap } from 'rxjs/operators';
+import { map, catchError, switchMap, tap } from 'rxjs/operators';
+import { ActivityLogService } from './activity-log.service';
+import { EventBusService } from './event-bus.service';
 
 export interface UserFilters {
   role?: string;
@@ -49,7 +51,11 @@ export interface CreateUserRequest {
   providedIn: 'root'
 })
 export class UserManagementService {
-  constructor(private supabase: SupabaseService) {}
+  constructor(
+    private supabase: SupabaseService,
+    private activityLogService: ActivityLogService,
+    private eventBus: EventBusService
+  ) {}
 
   getUsers(page: number = 1, pageSize: number = 10, filters?: UserFilters): Observable<User[]> {
     const startRange = (page - 1) * pageSize;
@@ -261,6 +267,38 @@ export class UserManagementService {
         if (error) throw error;
         return data;
       }),
+      tap((user) => {
+        // Log the activity
+        const currentUser = this.supabase.getCurrentUserSync();
+        console.log('UserManagementService: Current user for activity logging (create):', currentUser?.email || 'Unknown');
+
+        // If we couldn't get the current user synchronously, use a fallback approach
+        const userId = currentUser?.id || 'system';
+        const userEmail = currentUser?.email || 'system@example.com';
+
+        this.activityLogService.createActivityLog({
+          user_id: userId,
+          user_email: userEmail,
+          action: 'create',
+          entity_type: 'user',
+          entity_id: user.id,
+          details: {
+            user_email: userData.email,
+            user_name: userData.full_name,
+            role: userData.role
+          }
+        }).subscribe({
+          next: (log) => {
+            console.log('UserManagementService: Activity log created successfully:', log.id);
+            // Notify other components that an activity has been logged
+            this.eventBus.emit({ type: 'activity-logged' });
+            console.log('UserManagementService: Emitted activity-logged event');
+          },
+          error: (error) => {
+            console.error('UserManagementService: Error creating activity log:', error);
+          }
+        });
+      }),
       catchError(error => {
         console.error('Error creating user:', error);
         return throwError(() => new Error('Failed to create user. ' + error.message));
@@ -274,6 +312,9 @@ export class UserManagementService {
     // Create an update object for organization settings if needed
     const organizationUpdateData: any = {};
     let organizationId: string | null = null;
+
+    // Store the original email for activity logging
+    const userEmail = userData.email || '';
 
     // Check if we have a name field to update
     if (userData.full_name !== undefined) {
@@ -436,6 +477,37 @@ export class UserManagementService {
           user.max_storage = userData.max_storage;
         }
 
+        // Log the activity
+        const currentUser = this.supabase.getCurrentUserSync();
+        console.log('UserManagementService: Current user for activity logging:', currentUser?.email || 'Unknown');
+
+        // If we couldn't get the current user synchronously, use a fallback approach
+        const userId = currentUser?.id || 'system';
+        const userEmail = currentUser?.email || 'system@example.com';
+
+        this.activityLogService.createActivityLog({
+          user_id: userId,
+          user_email: userEmail,
+          action: 'update',
+          entity_type: 'user',
+          entity_id: user.id,
+          details: {
+            user_email: user.email,
+            user_name: user.full_name,
+            updated_fields: Object.keys(userData)
+          }
+        }).subscribe({
+          next: (log) => {
+            console.log('UserManagementService: Activity log created successfully:', log.id);
+            // Notify other components that an activity has been logged
+            this.eventBus.emit({ type: 'activity-logged' });
+            console.log('UserManagementService: Emitted activity-logged event');
+          },
+          error: (error) => {
+            console.error('UserManagementService: Error creating activity log:', error);
+          }
+        });
+
         return user;
       }),
       catchError(error => {
@@ -445,13 +517,43 @@ export class UserManagementService {
     );
   }
 
-  deleteUser(userId: string): Observable<void> {
+  deleteUser(userId: string, userEmail: string): Observable<void> {
     return from(
       this.supabase.supabaseClient.auth.admin.deleteUser(userId)
     ).pipe(
       map(({ error }) => {
         if (error) throw error;
         return;
+      }),
+      tap(() => {
+        // Log the activity
+        const currentUser = this.supabase.getCurrentUserSync();
+        console.log('UserManagementService: Current user for activity logging (delete):', currentUser?.email || 'Unknown');
+
+        // If we couldn't get the current user synchronously, use a fallback approach
+        const currentUserId = currentUser?.id || 'system';
+        const currentUserEmail = currentUser?.email || 'system@example.com';
+
+        this.activityLogService.createActivityLog({
+          user_id: currentUserId,
+          user_email: currentUserEmail,
+          action: 'delete',
+          entity_type: 'user',
+          entity_id: userId,
+          details: {
+            user_email: userEmail
+          }
+        }).subscribe({
+          next: (log) => {
+            console.log('UserManagementService: Activity log created successfully:', log.id);
+            // Notify other components that an activity has been logged
+            this.eventBus.emit({ type: 'activity-logged' });
+            console.log('UserManagementService: Emitted activity-logged event');
+          },
+          error: (error) => {
+            console.error('UserManagementService: Error creating activity log:', error);
+          }
+        });
       }),
       catchError(error => {
         console.error('Error deleting user:', error);
