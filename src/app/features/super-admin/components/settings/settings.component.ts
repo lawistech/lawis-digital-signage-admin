@@ -190,7 +190,20 @@ import { Subscription } from 'rxjs';
               <p class="text-slate-500 font-medium">Loading subscription plans...</p>
             </div>
 
-            <div class="space-y-4" *ngIf="!isLoadingPlans || subscriptionPlans.length > 0">
+            <!-- No subscription plans message -->
+            <div *ngIf="!isLoadingPlans && subscriptionPlans.length === 0" class="text-center py-6">
+              <div class="text-slate-500 font-medium mb-4">No subscription plans found in Supabase.</div>
+              <button
+                (click)="openEditPlanDialog()"
+                class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center mx-auto transition-colors duration-200 shadow-sm"
+              >
+                <span class="material-icons mr-2">add_circle_outline</span>
+                Add Your First Plan
+              </button>
+            </div>
+
+            <!-- Subscription plans list -->
+            <div class="space-y-4" *ngIf="!isLoadingPlans && subscriptionPlans.length > 0">
               <div *ngFor="let plan of subscriptionPlans; let i = index"
                    class="border border-slate-200 rounded-lg p-5 hover:shadow-md transition-shadow duration-300 relative overflow-hidden"
                    [ngClass]="{
@@ -512,29 +525,37 @@ export class SettingsComponent implements OnInit, OnDestroy {
     console.log('Opening edit plan dialog');
     console.log('Plan to edit:', plan);
 
-    // Open the dialog using Angular Material
-    const dialogRef = this.dialog.open(EditPlanDialogComponent, {
-      width: '500px',
-      data: { plan: plan || {} }
-    });
+    try {
+      // Open the dialog using Angular Material
+      const dialogRef = this.dialog.open(EditPlanDialogComponent, {
+        width: '500px',
+        data: { plan: plan ? {...plan} : {} },
+        disableClose: false,
+        autoFocus: true,
+        panelClass: 'subscription-plan-dialog'
+      });
 
-    // Handle the dialog result
-    dialogRef.afterClosed().subscribe(result => {
-      if (!result) {
-        console.log('Dialog closed without saving');
-        return;
-      }
+      // Handle the dialog result
+      dialogRef.afterClosed().subscribe(result => {
+        if (!result) {
+          console.log('Dialog closed without saving');
+          return;
+        }
 
-      console.log('Dialog result:', result);
+        console.log('Dialog result:', result);
 
-      if (result.id) {
-        // Update existing plan
-        this.updateSubscriptionPlan(result.id, result);
-      } else {
-        // Add new plan
-        this.addSubscriptionPlan(result);
-      }
-    });
+        if (result.id) {
+          // Update existing plan
+          this.updateSubscriptionPlan(result.id, result);
+        } else {
+          // Add new plan
+          this.addSubscriptionPlan(result);
+        }
+      });
+    } catch (error: any) {
+      console.error('Error opening dialog:', error);
+      this.planErrorMessage = `Error opening dialog: ${error.message || 'Unknown error'}`;
+    }
   }
 
   updateSubscriptionPlan(planId: string, planData: Partial<SubscriptionPlan>) {
@@ -557,11 +578,11 @@ export class SettingsComponent implements OnInit, OnDestroy {
       error: (error) => {
         console.error('Error updating subscription plan:', error);
         if (error.message === 'Not authorized') {
-          this.planErrorMessage = 'Not authorized to update subscription plans. Please check the FIX-SUBSCRIPTION-PLANS.md file for solutions.';
+          this.planErrorMessage = 'Not authorized to update subscription plans. The SQL function needs to be updated to remove the role check.';
         } else if (error.message.includes('COALESCE could not convert type')) {
-          this.planErrorMessage = 'Type conversion error. Please check the FIX-SUBSCRIPTION-PLANS.md file for solutions.';
+          this.planErrorMessage = 'Type conversion error in the SQL function. Please run the updated SQL script.';
         } else {
-          this.planErrorMessage = 'Failed to update subscription plan. Please try again.';
+          this.planErrorMessage = `Failed to update subscription plan: ${error.message || 'Unknown error'}`;
         }
         this.isLoadingPlans = false;
       }
@@ -588,11 +609,11 @@ export class SettingsComponent implements OnInit, OnDestroy {
       error: (error) => {
         console.error('Error adding subscription plan:', error);
         if (error.message === 'Not authorized') {
-          this.planErrorMessage = 'Not authorized to add subscription plans. Please check the FIX-SUBSCRIPTION-PLANS.md file for solutions.';
+          this.planErrorMessage = 'Not authorized to add subscription plans. The SQL function needs to be updated to remove the role check.';
         } else if (error.message.includes('COALESCE could not convert type')) {
-          this.planErrorMessage = 'Type conversion error. Please check the FIX-SUBSCRIPTION-PLANS.md file for solutions.';
+          this.planErrorMessage = 'Type conversion error in the SQL function. Please run the updated SQL script.';
         } else {
-          this.planErrorMessage = 'Failed to add subscription plan. Please try again.';
+          this.planErrorMessage = `Failed to add subscription plan: ${error.message || 'Unknown error'}`;
         }
         this.isLoadingPlans = false;
       }
@@ -743,13 +764,13 @@ export class SettingsComponent implements OnInit, OnDestroy {
       error: (error) => {
         console.error('Error deleting subscription plan:', error);
         if (error.message === 'Not authorized') {
-          this.planErrorMessage = 'Not authorized to delete subscription plans. Please check the FIX-SUBSCRIPTION-PLANS.md file for solutions.';
+          this.planErrorMessage = 'Not authorized to delete subscription plans. The SQL function needs to be updated to remove the role check.';
         } else if (error.message === 'Cannot delete plan that is in use by organizations') {
           this.planErrorMessage = 'Cannot delete this plan because it is currently in use by one or more organizations.';
         } else if (error.message.includes('COALESCE could not convert type')) {
-          this.planErrorMessage = 'Type conversion error. Please check the FIX-SUBSCRIPTION-PLANS.md file for solutions.';
+          this.planErrorMessage = 'Type conversion error in the SQL function. Please run the updated SQL script.';
         } else {
-          this.planErrorMessage = 'Failed to delete subscription plan. Please try again.';
+          this.planErrorMessage = `Failed to delete subscription plan: ${error.message || 'Unknown error'}`;
         }
         this.isLoadingPlans = false;
       }

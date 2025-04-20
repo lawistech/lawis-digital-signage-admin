@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable, forkJoin, map, from, of, catchError, tap } from 'rxjs';
+import { Observable, forkJoin, map, from, of, catchError, tap, switchMap } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { EventBusService } from './event-bus.service';
@@ -232,10 +232,12 @@ export class SuperAdminStatsService {
 
   // Subscription Plans Methods
   getSubscriptionPlans(): Observable<SubscriptionPlan[]> {
-    console.log('Fetching subscription plans...');
+    console.log('Fetching subscription plans from subscription_pans table...');
     return from(
       this.supabase.supabaseClient
-        .rpc('get_subscription_plans')
+        .from('subscription_pans')
+        .select('*')
+        .order('price', { ascending: true })
     ).pipe(
       map(({ data, error }) => {
         if (error) {
@@ -262,6 +264,9 @@ export class SuperAdminStatsService {
             }
           } else if (Array.isArray(plan.features)) {
             features = plan.features;
+          } else if (plan.features && typeof plan.features === 'object') {
+            // Handle JSONB objects from Supabase
+            features = Object.values(plan.features);
           }
 
           console.log('Plan features after processing:', features);
@@ -269,9 +274,9 @@ export class SuperAdminStatsService {
           return {
             id: plan.id,
             name: plan.name,
-            price: parseFloat(plan.price) || 0,
-            max_screens: parseInt(plan.max_screens) || 0,
-            max_users: parseInt(plan.max_users) || 0,
+            price: typeof plan.price === 'number' ? plan.price : parseFloat(plan.price) || 0,
+            max_screens: typeof plan.max_screens === 'number' ? plan.max_screens : parseInt(plan.max_screens) || 0,
+            max_users: typeof plan.max_users === 'number' ? plan.max_users : parseInt(plan.max_users) || 0,
             description: plan.description || '',
             features: features,
             is_popular: !!plan.is_popular,
@@ -283,70 +288,79 @@ export class SuperAdminStatsService {
       }),
       catchError(error => {
         console.error('Error getting subscription plans:', error);
-        // Return default plans if there's an error
-        const defaultPlans = [
-          { name: 'Basic', price: 9.99, max_screens: 1, max_users: 2, features: ['Basic content scheduling', 'Standard support'] },
-          { name: 'Standard', price: 29.99, max_screens: 5, max_users: 10, is_popular: true, features: ['Advanced scheduling', 'Priority support', 'Content templates'] },
-          { name: 'Premium', price: 99.99, max_screens: 20, max_users: 50, features: ['Custom branding', 'API access', 'Advanced analytics', 'Dedicated support'] }
-        ];
-        console.log('Using default subscription plans:', defaultPlans);
-        return of(defaultPlans);
+        // Return empty array instead of default plans
+        console.log('No subscription plans found in Supabase');
+        return of([]);
       })
     );
   }
 
   updateSubscriptionPlan(planId: string, planData: Partial<SubscriptionPlan>): Observable<SubscriptionPlan> {
-    console.log(`Updating subscription plan ${planId} with:`, planData);
+    console.log(`Updating subscription plan ${planId} in subscription_pans table with:`, planData);
 
     // Ensure features is an array
     const processedPlanData = {
       ...planData,
-      features: Array.isArray(planData.features) ? planData.features : []
+      features: Array.isArray(planData.features) ? planData.features : [],
+      updated_at: new Date().toISOString()
     };
 
     return from(
       this.supabase.supabaseClient
-        .rpc('update_subscription_plan', { plan_id: planId, plan_data: processedPlanData })
+        .from('subscription_pans')
+        .update(processedPlanData)
+        .eq('id', planId)
+        .select()
     ).pipe(
       map(({ data, error }) => {
         if (error) {
           console.error('Error in update_subscription_plan RPC call:', error);
           if (error.message === 'Not authorized') {
-            console.warn('Authorization error. Please check FIX-SUBSCRIPTION-PLANS.md for solutions.');
+            console.warn('Authorization error. The SQL function has a role check that needs to be removed.');
           } else if (error.message.includes('COALESCE could not convert type')) {
-            console.warn('Type conversion error. Please check FIX-SUBSCRIPTION-PLANS.md for solutions.');
+            console.warn('Type conversion error in the SQL function.');
           }
           throw error;
         }
         console.log('Subscription plan updated successfully:', data);
 
+        // Ensure data is an array and get the first item
+        if (!data || !Array.isArray(data) || data.length === 0) {
+          throw new Error('No data returned from update operation');
+        }
+
+        const plan = data[0];
+
         // Process the returned data to ensure all properties are properly formatted
         // Parse features if it's a string
         let features = [];
-        if (typeof data.features === 'string') {
+        if (typeof plan.features === 'string') {
           try {
-            features = JSON.parse(data.features);
+            features = JSON.parse(plan.features);
           } catch (e) {
-            console.warn('Failed to parse features string:', data.features);
+            console.warn('Failed to parse features string:', plan.features);
           }
-        } else if (Array.isArray(data.features)) {
-          features = data.features;
+        } else if (Array.isArray(plan.features)) {
+          features = plan.features;
+        } else if (plan.features && typeof plan.features === 'object') {
+          // Handle JSONB objects from Supabase
+          features = Object.values(plan.features);
         }
 
         console.log('Plan features after processing (update):', features);
 
         const updatedPlan = {
-          id: data.id,
-          name: data.name,
-          price: parseFloat(data.price) || 0,
-          max_screens: parseInt(data.max_screens) || 0,
-          max_users: parseInt(data.max_users) || 0,
-          description: data.description || '',
+          id: plan.id,
+          name: plan.name,
+          price: typeof plan.price === 'number' ? plan.price : parseFloat(plan.price) || 0,
+          max_screens: typeof plan.max_screens === 'number' ? plan.max_screens : parseInt(plan.max_screens) || 0,
+          max_users: typeof plan.max_users === 'number' ? plan.max_users : parseInt(plan.max_users) || 0,
+          description: plan.description || '',
           features: features,
-          is_popular: !!data.is_popular,
-          is_active: data.is_active !== false,
-          created_at: data.created_at,
-          updated_at: data.updated_at
+          is_popular: !!plan.is_popular,
+          is_active: plan.is_active !== false,
+          created_at: plan.created_at,
+          updated_at: plan.updated_at
         } as SubscriptionPlan;
 
         // Emit an event to notify subscribers that a plan has been updated
@@ -359,90 +373,79 @@ export class SuperAdminStatsService {
       }),
       catchError(error => {
         console.error('Error updating subscription plan:', error);
-        // If we're in development mode, use mock data to allow testing
-        if ((error.message === 'Not authorized' || error.message.includes('COALESCE could not convert type')) && !environment.production) {
-          console.warn('Using mock data for development. In production, please fix the authorization issue.');
-          const updatedPlan: SubscriptionPlan = {
-            id: planId,
-            name: planData.name || 'Updated Plan',
-            price: planData.price || 0,
-            max_screens: planData.max_screens || 1,
-            max_users: planData.max_users || 1,
-            description: planData.description || '',
-            features: Array.isArray(planData.features) ? planData.features :
-              (planData.name === 'Basic' ? ['Basic content scheduling', 'Standard support'] :
-               planData.name === 'Standard' ? ['Advanced scheduling', 'Priority support', 'Content templates'] :
-               planData.name === 'Premium' ? ['Custom branding', 'API access', 'Advanced analytics', 'Dedicated support'] : []),
-            is_popular: !!planData.is_popular,
-            is_active: planData.is_active !== false,
-            updated_at: new Date().toISOString()
-          };
-
-          // Emit an event for the mock data as well
-          this.eventBus.emit({
-            type: 'subscription-plan-updated',
-            payload: updatedPlan
-          });
-
-          return of(updatedPlan);
-        }
+        // Don't use mock data, just throw the error
+        console.error('Error updating subscription plan, no fallback to mock data');
         throw error;
       })
     );
   }
 
   addSubscriptionPlan(planData: Partial<SubscriptionPlan>): Observable<SubscriptionPlan> {
-    console.log('Adding new subscription plan:', planData);
+    console.log('Adding new subscription plan to subscription_pans table:', planData);
 
     // Ensure features is an array
     const processedPlanData = {
       ...planData,
-      features: Array.isArray(planData.features) ? planData.features : []
+      features: Array.isArray(planData.features) ? planData.features : [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
 
     return from(
       this.supabase.supabaseClient
-        .rpc('add_subscription_plan', { plan_data: processedPlanData })
+        .from('subscription_pans')
+        .insert(processedPlanData)
+        .select()
     ).pipe(
       map(({ data, error }) => {
         if (error) {
           console.error('Error in add_subscription_plan RPC call:', error);
           if (error.message === 'Not authorized') {
-            console.warn('Authorization error. Please check FIX-SUBSCRIPTION-PLANS.md for solutions.');
+            console.warn('Authorization error. The SQL function has a role check that needs to be removed.');
           } else if (error.message.includes('COALESCE could not convert type')) {
-            console.warn('Type conversion error. Please check FIX-SUBSCRIPTION-PLANS.md for solutions.');
+            console.warn('Type conversion error in the SQL function.');
           }
           throw error;
         }
         console.log('Subscription plan added successfully:', data);
 
+        // Ensure data is an array and get the first item
+        if (!data || !Array.isArray(data) || data.length === 0) {
+          throw new Error('No data returned from insert operation');
+        }
+
+        const plan = data[0];
+
         // Process the returned data to ensure all properties are properly formatted
         // Parse features if it's a string
         let features = [];
-        if (typeof data.features === 'string') {
+        if (typeof plan.features === 'string') {
           try {
-            features = JSON.parse(data.features);
+            features = JSON.parse(plan.features);
           } catch (e) {
-            console.warn('Failed to parse features string:', data.features);
+            console.warn('Failed to parse features string:', plan.features);
           }
-        } else if (Array.isArray(data.features)) {
-          features = data.features;
+        } else if (Array.isArray(plan.features)) {
+          features = plan.features;
+        } else if (plan.features && typeof plan.features === 'object') {
+          // Handle JSONB objects from Supabase
+          features = Object.values(plan.features);
         }
 
         console.log('Plan features after processing (add):', features);
 
         const newPlan = {
-          id: data.id,
-          name: data.name,
-          price: parseFloat(data.price) || 0,
-          max_screens: parseInt(data.max_screens) || 0,
-          max_users: parseInt(data.max_users) || 0,
-          description: data.description || '',
+          id: plan.id,
+          name: plan.name,
+          price: typeof plan.price === 'number' ? plan.price : parseFloat(plan.price) || 0,
+          max_screens: typeof plan.max_screens === 'number' ? plan.max_screens : parseInt(plan.max_screens) || 0,
+          max_users: typeof plan.max_users === 'number' ? plan.max_users : parseInt(plan.max_users) || 0,
+          description: plan.description || '',
           features: features,
-          is_popular: !!data.is_popular,
-          is_active: data.is_active !== false,
-          created_at: data.created_at,
-          updated_at: data.updated_at
+          is_popular: !!plan.is_popular,
+          is_active: plan.is_active !== false,
+          created_at: plan.created_at,
+          updated_at: plan.updated_at
         } as SubscriptionPlan;
 
         // Emit an event to notify subscribers that a new plan has been added
@@ -455,58 +458,46 @@ export class SuperAdminStatsService {
       }),
       catchError(error => {
         console.error('Error adding subscription plan:', error);
-        // If we're in development mode, use mock data to allow testing
-        if ((error.message === 'Not authorized' || error.message.includes('COALESCE could not convert type')) && !environment.production) {
-          console.warn('Using mock data for development. In production, please fix the authorization issue.');
-          const mockPlan: SubscriptionPlan = {
-            id: crypto.randomUUID(),
-            name: planData.name || 'New Plan',
-            price: planData.price || 0,
-            max_screens: planData.max_screens || 1,
-            max_users: planData.max_users || 1,
-            description: planData.description || '',
-            features: Array.isArray(planData.features) ? planData.features :
-              (planData.name === 'Basic' ? ['Basic content scheduling', 'Standard support'] :
-               planData.name === 'Standard' ? ['Advanced scheduling', 'Priority support', 'Content templates'] :
-               planData.name === 'Premium' ? ['Custom branding', 'API access', 'Advanced analytics', 'Dedicated support'] : []),
-            is_popular: !!planData.is_popular,
-            is_active: planData.is_active !== false,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-
-          // Emit an event for the mock data as well
-          this.eventBus.emit({
-            type: 'subscription-plan-added',
-            payload: mockPlan
-          });
-
-          return of(mockPlan);
-        }
+        // Don't use mock data, just throw the error
+        console.error('Error adding subscription plan, no fallback to mock data');
         throw error;
       })
     );
   }
 
   deleteSubscriptionPlan(planId: string): Observable<boolean> {
-    console.log(`Deleting subscription plan ${planId}`);
+    console.log(`Deleting subscription plan ${planId} from subscription_pans table`);
+
+    // First check if the plan is in use by any organizations
     return from(
       this.supabase.supabaseClient
-        .rpc('delete_subscription_plan', { plan_id: planId })
+        .from('organizations')
+        .select('id')
+        .eq('subscription_tier', planId)
     ).pipe(
-      map(({ data, error }) => {
+      switchMap(({ data: orgs, error: orgsError }) => {
+        if (orgsError) {
+          console.error('Error checking if plan is in use:', orgsError);
+          throw orgsError;
+        }
+
+        if (orgs && orgs.length > 0) {
+          throw new Error('Cannot delete plan that is in use by organizations');
+        }
+
+        // If not in use, proceed with deletion
+        return from(
+          this.supabase.supabaseClient
+            .from('subscription_pans')
+            .delete()
+            .eq('id', planId)
+        );
+      }),
+      map(({ error }) => {
         if (error) {
-          console.error('Error in delete_subscription_plan RPC call:', error);
-          if (error.message === 'Not authorized') {
-            console.warn('Authorization error. Please check FIX-SUBSCRIPTION-PLANS.md for solutions.');
-          } else if (error.message === 'Cannot delete plan that is in use by organizations') {
-            console.warn('This plan is currently in use by one or more organizations and cannot be deleted.');
-          } else if (error.message.includes('COALESCE could not convert type')) {
-            console.warn('Type conversion error. Please check FIX-SUBSCRIPTION-PLANS.md for solutions.');
-          }
+          console.error('Error deleting subscription plan:', error);
           throw error;
         }
-        console.log('Subscription plan deleted successfully');
 
         // Emit an event to notify subscribers that a plan has been deleted
         this.eventBus.emit({
@@ -517,18 +508,7 @@ export class SuperAdminStatsService {
         return true;
       }),
       catchError(error => {
-        console.error('Error deleting subscription plan:', error);
-        // If we're in development mode, use mock data to allow testing
-        if (error.message === 'Not authorized' && !environment.production) {
-          console.warn('Using mock data for development. In production, please fix the authorization issue.');
-          // Emit an event for the mock data as well
-          this.eventBus.emit({
-            type: 'subscription-plan-deleted',
-            payload: planId
-          });
-
-          return of(true);
-        }
+        console.error('Error in deleteSubscriptionPlan:', error);
         throw error;
       })
     );

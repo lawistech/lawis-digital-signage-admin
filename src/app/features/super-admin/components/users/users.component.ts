@@ -568,12 +568,8 @@ export class UsersComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         console.error('Error loading subscription plans:', error);
-        // Use default plans if there's an error
-        this.subscriptionPlans = [
-          { name: 'Basic', price: 9.99, max_screens: 1, max_users: 2, features: ['Basic content scheduling', 'Standard support'] },
-          { name: 'Standard', price: 29.99, max_screens: 5, max_users: 10, is_popular: true, features: ['Advanced scheduling', 'Priority support', 'Content templates'] },
-          { name: 'Premium', price: 99.99, max_screens: 20, max_users: 50, features: ['Custom branding', 'API access', 'Advanced analytics', 'Dedicated support'] }
-        ];
+        // Return empty array instead of default plans
+        this.subscriptionPlans = [];
       }
     });
   }
