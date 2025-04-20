@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 import { createClient, SupabaseClient, User } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
-import { Observable, from, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { Observable, from, of, throwError, timer } from 'rxjs';
+import { catchError, map, retryWhen, mergeMap, delay, take } from 'rxjs/operators';
 
 
 @Injectable({
@@ -22,13 +22,44 @@ export class SupabaseService {
   }
 
   getCurrentUser(): Observable<User | null> {
-    return from(this.supabase.auth.getUser()).pipe(
+    return this.createSupabaseObservable(() => this.supabase.auth.getUser()).pipe(
       map(({ data }) => data?.user || null),
-      catchError(() => of(null))
+      catchError((error) => {
+        console.error('Error getting current user:', error);
+        return of(null);
+      })
     );
   }
 
   // Synchronous method to get current user from local storage
+  /**
+   * Helper method to create an observable with retry logic for Supabase auth operations
+   * @param operation Function that returns a Promise from Supabase auth
+   * @returns Observable with retry logic
+   */
+  createSupabaseObservable<T>(operation: () => Promise<T>): Observable<T> {
+    return from(operation()).pipe(
+      retryWhen(errors =>
+        errors.pipe(
+          mergeMap((error, i) => {
+            // Only retry on NavigatorLockAcquireTimeoutError or similar lock errors
+            const isLockError = error.name === 'NavigatorLockAcquireTimeoutError' ||
+                               error.message?.includes('lock') ||
+                               error.message?.includes('Lock');
+
+            // Retry up to 3 times with increasing delay for lock errors
+            if (isLockError && i < 3) {
+              console.log(`Retrying Supabase operation after lock error (attempt ${i + 1})`);
+              return timer(i * 500); // 0ms, 500ms, 1000ms
+            }
+
+            return throwError(() => error);
+          })
+        )
+      )
+    );
+  }
+
   getCurrentUserSync(): User | null {
     try {
       // Try multiple possible storage keys

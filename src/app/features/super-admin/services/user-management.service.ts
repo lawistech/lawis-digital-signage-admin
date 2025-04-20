@@ -315,67 +315,109 @@ export class UserManagementService {
       role: userData.role
     });
 
-    // Generate a random UUID for the user ID
-    const userId = crypto.randomUUID();
     const now = new Date().toISOString();
 
-    // Create a user directly in the profiles table without using Auth
-    // This is a workaround for the 403 Forbidden error when using the Auth admin API
-    // First, let's check the structure of the profiles table
-    return from(
-      this.supabase.supabaseClient
-        .from('profiles')
-        .select('*')
-        .limit(1)
+    // Generate a random password if one is not provided
+    const password = userData.password || this.generateRandomPassword();
+
+    console.log('Creating user in Supabase Auth');
+
+    // Skip trying to use admin.createUser and go directly to the regular signUp method
+    // This avoids the 403 Forbidden error when the client doesn't have admin privileges
+    return this.supabase.createSupabaseObservable(() =>
+      this.supabase.supabaseClient.auth.signUp({
+        email: userData.email,
+        password: password,
+        options: {
+          data: {
+            full_name: userData.full_name,
+            role: userData.role || 'user'
+          },
+          // Don't automatically confirm the email - user will need to verify
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
+      })
     ).pipe(
       switchMap(({ data, error }) => {
         if (error) {
-          console.error('Error checking profiles table structure:', error);
-          throw new Error(`Failed to check profiles table: ${error.message}`);
+          console.error('Error creating user with signUp:', error);
+          throw new Error(`Failed to create user: ${error.message || 'Unknown error'}`);
         }
 
-        console.log('Profiles table structure:', data);
-
-        // Now create the user with only the columns that exist in the table
-        // Based on the structure we found
-        const profileData: any = {
-          id: userId
-        };
-
-        // Add fields only if they exist in the sample data
-        if (data && data.length > 0) {
-          const sampleProfile = data[0];
-
-          // Check each field and add it if it exists
-          if ('username' in sampleProfile) profileData.username = userData.email.split('@')[0];
-          if ('email' in sampleProfile) profileData.email = userData.email;
-          if ('name' in sampleProfile) profileData.name = userData.full_name;
-          if ('full_name' in sampleProfile) profileData.full_name = userData.full_name;
-          if ('role' in sampleProfile) profileData.role = userData.role || 'user';
-          if ('organization_id' in sampleProfile) profileData.organization_id = userData.organization_id || null;
-          if ('created_at' in sampleProfile) profileData.created_at = now;
-          if ('updated_at' in sampleProfile) profileData.updated_at = now;
-          if ('avatar_url' in sampleProfile) profileData.avatar_url = null;
-          if ('website' in sampleProfile) profileData.website = null;
-        } else {
-          // Fallback if we couldn't get sample data
-          profileData.username = userData.email.split('@')[0];
-          profileData.full_name = userData.full_name;
-          profileData.role = userData.role || 'user';
-          profileData.organization_id = userData.organization_id || null;
+        // Check if we have a user from the response
+        if (!data.user) {
+          console.error('No user returned from signUp');
+          throw new Error('Failed to create user: No user data returned');
         }
 
-        console.log('Creating profile with data:', profileData);
+        console.log('User created with signUp successfully:', data.user.id);
+        return of({ data, error: null });
+      }),
+      switchMap(({ data }) => {
+        // Get the user ID from the auth response
+        // Use non-null assertion since we've already checked data.user exists
+        const userId = data.user!.id;
 
+        console.log('User created in Auth with ID:', userId);
+
+        // Now create the profile record with the same ID
         return from(
           this.supabase.supabaseClient
             .from('profiles')
-            .insert(profileData)
-            .select()
-            .single()
+            .select('*')
+            .limit(1)
+        ).pipe(
+          switchMap(({ data: profileData, error: profileStructureError }) => {
+            if (profileStructureError) {
+              console.error('Error checking profiles table structure:', profileStructureError);
+              throw new Error(`Failed to check profiles table: ${profileStructureError.message}`);
+            }
+
+            console.log('Profiles table structure:', profileData);
+
+            // Create profile data based on the table structure
+            const profileRecord: any = {
+              id: userId
+            };
+
+            // Add fields only if they exist in the sample data
+            if (profileData && profileData.length > 0) {
+              const sampleProfile = profileData[0];
+
+              // Check each field and add it if it exists
+              if ('username' in sampleProfile) profileRecord.username = userData.email.split('@')[0];
+              if ('email' in sampleProfile) profileRecord.email = userData.email;
+              if ('name' in sampleProfile) profileRecord.name = userData.full_name;
+              if ('full_name' in sampleProfile) profileRecord.full_name = userData.full_name;
+              if ('role' in sampleProfile) profileRecord.role = userData.role || 'user';
+              if ('organization_id' in sampleProfile) profileRecord.organization_id = userData.organization_id || null;
+              if ('created_at' in sampleProfile) profileRecord.created_at = now;
+              if ('updated_at' in sampleProfile) profileRecord.updated_at = now;
+              if ('avatar_url' in sampleProfile) profileRecord.avatar_url = null;
+              if ('website' in sampleProfile) profileRecord.website = null;
+            } else {
+              // Fallback if we couldn't get sample data
+              profileRecord.username = userData.email.split('@')[0];
+              profileRecord.email = userData.email;
+              profileRecord.full_name = userData.full_name;
+              profileRecord.role = userData.role || 'user';
+              profileRecord.organization_id = userData.organization_id || null;
+              profileRecord.created_at = now;
+              profileRecord.updated_at = now;
+            }
+
+            console.log('Creating profile with data:', profileRecord);
+
+            return from(
+              this.supabase.supabaseClient
+                .from('profiles')
+                .upsert(profileRecord)
+                .select()
+                .single()
+            );
+          })
         );
-      })
-    ).pipe(
+      }),
       map(({ data: profileData, error: profileError }) => {
         if (profileError) {
           console.error('Error creating profile record:', profileError);
@@ -386,12 +428,12 @@ export class UserManagementService {
 
         // Create a complete user object with all required fields
         const user: User = {
-          id: userId,
+          id: profileData.id,
           email: userData.email,
           full_name: userData.full_name,
           role: userData.role || 'user',
           organization_id: userData.organization_id || null,
-          created_at: now,
+          created_at: profileData.created_at || now,
           last_sign_in_at: null,
           subscription_tier: 'free',
           subscription_status: 'active',
@@ -742,6 +784,24 @@ export class UserManagementService {
     );
   }
 
+  /**
+   * Generates a random password for new users
+   * @returns A random password string
+   */
+  private generateRandomPassword(): string {
+    // Generate a random password with letters, numbers, and special characters
+    const length = 12;
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+    let password = '';
+
+    for (let i = 0; i < length; i++) {
+      const randomIndex = Math.floor(Math.random() * charset.length);
+      password += charset[randomIndex];
+    }
+
+    return password;
+  }
+
   getUserCount(filters?: UserFilters): Observable<number> {
     // Build the query with filters
     let queryBuilder = this.supabase.supabaseClient
@@ -972,15 +1032,5 @@ export class UserManagementService {
     );
   }
 
-  // Helper method to generate a random password
-  private generateRandomPassword(): string {
-    const length = 12;
-    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+';
-    let password = '';
-    for (let i = 0; i < length; i++) {
-      const randomIndex = Math.floor(Math.random() * charset.length);
-      password += charset[randomIndex];
-    }
-    return password;
-  }
+  // The generateRandomPassword method is defined earlier in the file
 }

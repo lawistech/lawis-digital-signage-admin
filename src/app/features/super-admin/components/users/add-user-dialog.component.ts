@@ -65,7 +65,7 @@ import { UserManagementService, Organization } from '../../services/user-managem
               </div>
               <div class="ml-3">
                 <p class="text-sm text-yellow-700">
-                  Note: This user will be created as a profile only. They will need to use the "Forgot Password" feature to set a password and log in.
+                  Note: A temporary password will be generated for this user. They will receive a confirmation email and will need to verify their email address before logging in.
                 </p>
               </div>
             </div>
@@ -193,7 +193,7 @@ export class AddUserDialogComponent implements OnInit {
         this.isSubmitting = false;
 
         // Show a success message
-        alert(`User ${userData.full_name} (${userData.email}) has been created successfully.`);
+        alert(`User ${userData.full_name} (${userData.email}) has been created successfully. \n\nA confirmation email has been sent to the user. They will need to verify their email before they can log in.`);
 
         // Emit the user and close the dialog
         this.userCreated.emit(user);

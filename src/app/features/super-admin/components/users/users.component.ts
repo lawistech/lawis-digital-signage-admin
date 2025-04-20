@@ -280,11 +280,11 @@ import { SubscriptionPlan } from '../../services/super-admin-stats.service';
           </div>
         </div>
 
-        <!-- Users table -->
+        <!-- Users table - Simplified and improved design -->
         <table *ngIf="!isLoading && !errorMessage" class="min-w-full divide-y divide-slate-200">
           <thead>
             <tr class="bg-slate-50 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-              <th class="px-6 py-4">
+              <th class="px-6 py-3">
                 <div class="flex items-center">
                   <div class="relative flex items-center">
                     <input
@@ -294,18 +294,19 @@ import { SubscriptionPlan } from '../../services/super-admin-stats.service';
                       (change)="selectAllUsers()"
                     >
                   </div>
-                  <span class="font-semibold">User & Subscription</span>
+                  <span class="font-semibold">User</span>
                 </div>
               </th>
-              <th class="px-6 py-4 font-semibold">Payment Status</th>
-              <th class="px-6 py-4 font-semibold">Resources</th>
-              <th class="px-6 py-4 font-semibold">Last Active</th>
-              <th class="px-6 py-4 text-right font-semibold">Actions</th>
+              <th class="px-6 py-3 font-semibold">Role</th>
+              <th class="px-6 py-3 font-semibold">Status</th>
+              <th class="px-6 py-3 font-semibold">Screens</th>
+              <th class="px-6 py-3 text-right font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <tr *ngFor="let user of users" class="hover:bg-gray-50 cursor-pointer" [class.bg-blue-50]="isUserSelected(user.id)" (click)="viewUserDetails(user)">
-              <td class="px-6 py-4 whitespace-nowrap">
+              <!-- User Info Column -->
+              <td class="px-6 py-4">
                 <div class="flex items-center">
                   <input
                     type="checkbox"
@@ -313,108 +314,87 @@ import { SubscriptionPlan } from '../../services/super-admin-stats.service';
                     [checked]="isUserSelected(user.id)"
                     (change)="toggleUserSelection(user.id); $event.stopPropagation()"
                   >
-                  <div class="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
+                  <div class="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-medium">
                     {{ getInitials(user.full_name || user.email) }}
                   </div>
-                  <div class="ml-4 w-full">
+                  <div class="ml-4">
                     <div class="text-sm font-medium text-gray-900">{{ user.full_name || 'N/A' }}</div>
                     <div class="text-sm text-gray-500">{{ user.email }}</div>
-                    <div class="mt-2">
-                      <!-- Subscription Badge with Tooltip -->
-                      <div class="flex items-center mb-1">
-                        <span class="px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full mr-2"
-                              [ngClass]="{
-                                'bg-green-100 text-green-800': user.subscription_status === 'active',
-                                'bg-yellow-100 text-yellow-800': user.subscription_status === 'pending',
-                                'bg-red-100 text-red-800': user.subscription_status === 'inactive'
-                              }"
-                              [title]="'Status: ' + (user.subscription_status || 'inactive') + ' | Renewal: ' + formatNextBillingDate(user.subscription_renewal_date)">
-                          {{ user.subscription_tier | titlecase }}
-                        </span>
-                        <span class="text-xs text-gray-500" [title]="'Created: ' + formatDate(user.created_at)">
-                          {{ getTimeAgo(user.created_at) }}
-                        </span>
-                      </div>
-
-                      <!-- Screen Usage with Progress Bar -->
-                      <div class="flex items-center mb-1" title="Screen Usage">
-                        <span class="material-icons text-xs mr-1 text-blue-600">desktop_windows</span>
-                        <span class="text-xs text-gray-700 mr-2">{{ user.screen_count || 0 }}/{{ user.max_screens || 1 }}</span>
-                        <div class="w-24 bg-gray-200 rounded-full h-1.5">
-                          <div class="bg-blue-600 h-1.5 rounded-full" [style.width.%]="getPercentage(user.screen_count || 0, user.max_screens || 1)"></div>
-                        </div>
-                      </div>
-
-
+                    <div class="text-xs text-gray-400 mt-1" [title]="'Created: ' + formatDate(user.created_at)">
+                      Joined {{ getTimeAgo(user.created_at) }}
                     </div>
                   </div>
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full"
+
+              <!-- Role Column -->
+              <td class="px-6 py-4">
+                <span class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
                       [ngClass]="{
-                        'bg-green-100 text-green-800': user.payment_status === 'paid',
-                        'bg-yellow-100 text-yellow-800': user.payment_status === 'pending',
-                        'bg-red-100 text-red-800': user.payment_status === 'failed'
+                        'bg-indigo-100 text-indigo-800': user.role === 'super_admin',
+                        'bg-blue-100 text-blue-800': user.role === 'admin',
+                        'bg-gray-100 text-gray-800': user.role === 'user'
                       }">
-                  <span class="material-icons text-sm mr-1"
-                        [ngClass]="{
-                          'text-green-600': user.payment_status === 'paid',
-                          'text-yellow-600': user.payment_status === 'pending',
-                          'text-red-600': user.payment_status === 'failed'
-                        }">payments</span>
-                  {{ user.payment_status | titlecase }}
+                  {{ user.role | titlecase }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="mt-2 space-y-2">
-                  <!-- Storage Usage with Progress Bar -->
-                  <div>
-                    <div class="flex items-center justify-between mb-1">
-                      <div class="flex items-center" title="Storage Usage">
-                        <span class="material-icons text-xs mr-1 text-purple-600">storage</span>
-                        <span class="text-xs text-gray-700">Storage</span>
-                      </div>
-                      <span class="text-xs text-gray-500">
-                        {{ formatStorage(user.storage_usage) }}/{{ formatStorage(user.max_storage) }}
-                      </span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-1.5">
-                      <div class="bg-purple-600 h-1.5 rounded-full"
-                           [style.width.%]="getPercentage(user.storage_usage || 0, user.max_storage || 1)"
-                           [title]="getPercentage(user.storage_usage || 0, user.max_storage || 1) + '% used'"></div>
-                    </div>
-                  </div>
+
+              <!-- Status Column (combines subscription and payment) -->
+              <td class="px-6 py-4">
+                <div class="flex flex-col space-y-2">
+                  <!-- Subscription Status -->
+                  <span class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
+                        [ngClass]="{
+                          'bg-green-100 text-green-800': user.subscription_status === 'active',
+                          'bg-yellow-100 text-yellow-800': user.subscription_status === 'pending',
+                          'bg-red-100 text-red-800': user.subscription_status === 'inactive'
+                        }"
+                        [title]="'Renewal: ' + formatNextBillingDate(user.subscription_renewal_date)">
+                    {{ user.subscription_tier | titlecase }}
+                  </span>
+
+                  <!-- Payment Status -->
+                  <span class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
+                        [ngClass]="{
+                          'bg-green-100 text-green-800': user.payment_status === 'paid',
+                          'bg-yellow-100 text-yellow-800': user.payment_status === 'pending',
+                          'bg-red-100 text-red-800': user.payment_status === 'failed'
+                        }">
+                    <span class="material-icons text-xs mr-1"
+                          [ngClass]="{
+                            'text-green-600': user.payment_status === 'paid',
+                            'text-yellow-600': user.payment_status === 'pending',
+                            'text-red-600': user.payment_status === 'failed'
+                          }">payments</span>
+                    {{ user.payment_status | titlecase }}
+                  </span>
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-700" title="{{ formatDate(user.last_sign_in_at) }}">
-                  {{ getTimeAgo(user.last_sign_in_at) }}
-                </div>
-                <div class="text-xs text-gray-500 mt-1 flex items-center">
-                  <span class="material-icons text-xs mr-1">history</span>
-                  <span>{{ getLoginFrequency(user) }}</span>
-                </div>
-                <div *ngIf="user.last_active_screen" class="text-xs text-gray-500 mt-1 flex items-center">
-                  <span class="material-icons text-xs mr-1">monitor</span>
-                  <span title="Last Active Screen">{{ user.last_active_screen }}</span>
+
+              <!-- Screens Column -->
+              <td class="px-6 py-4">
+                <div class="flex items-center" title="Screen Usage">
+                  <span class="material-icons text-sm mr-2 text-blue-600">desktop_windows</span>
+                  <span class="text-sm font-medium">{{ user.screen_count || 0 }}/{{ user.max_screens || 1 }}</span>
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button
-                  (click)="editUser(user); $event.stopPropagation()"
-                  class="text-blue-600 hover:text-blue-900 mr-3 flex items-center"
-                >
-                  <span class="material-icons text-sm mr-1">edit</span>
-                  Edit
-                </button>
-                <button
-                  (click)="viewUserDetails(user); $event.stopPropagation()"
-                  class="text-indigo-600 hover:text-indigo-900 flex items-center"
-                >
-                  <span class="material-icons text-sm mr-1">visibility</span>
-                  View
-                </button>
+
+              <!-- Actions Column -->
+              <td class="px-6 py-4 text-right">
+                <div class="flex justify-end space-x-3">
+                  <button
+                    (click)="editUser(user); $event.stopPropagation()"
+                    class="text-blue-600 hover:text-blue-900 flex items-center"
+                  >
+                    <span class="material-icons text-sm">edit</span>
+                  </button>
+                  <button
+                    (click)="viewUserDetails(user); $event.stopPropagation()"
+                    class="text-indigo-600 hover:text-indigo-900 flex items-center"
+                  >
+                    <span class="material-icons text-sm">visibility</span>
+                  </button>
+                </div>
               </td>
             </tr>
 
