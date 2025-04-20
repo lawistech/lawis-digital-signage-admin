@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
 import { UserManagementService, User } from '../../services/user-management.service';
 import { Subscription, filter } from 'rxjs';
+import { SubscriptionPlan } from '../../services/super-admin-stats.service';
 
 @Component({
   selector: 'app-users',
@@ -131,9 +132,7 @@ import { Subscription, filter } from 'rxjs';
                 >
                   <option value="all">All Tiers</option>
                   <option value="free">Free</option>
-                  <option value="basic">Basic</option>
-                  <option value="premium">Premium</option>
-                  <option value="enterprise">Enterprise</option>
+                  <option *ngFor="let plan of subscriptionPlans" [value]="plan.name">{{ plan.name }}</option>
                 </select>
                 <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                   <span class="material-icons text-slate-400 text-sm">expand_more</span>
@@ -495,6 +494,8 @@ export class UsersComponent implements OnInit, OnDestroy {
   showBulkActionDialog = false;
   bulkActionType: 'role' | 'status' | 'payment' = 'role';
 
+  subscriptionPlans: SubscriptionPlan[] = [];
+
   private routerSubscription: Subscription | null = null;
 
   constructor(
@@ -542,6 +543,7 @@ export class UsersComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     // Initial data load
     this.loadUsers();
+    this.loadSubscriptionPlans();
 
     // Subscribe to router events to reload data when navigating to this component
     this.routerSubscription = this.router.events.pipe(
@@ -556,6 +558,24 @@ export class UsersComponent implements OnInit, OnDestroy {
 
     // Listen for messages from other components
     window.addEventListener('message', this.handleWindowMessages.bind(this));
+  }
+
+  loadSubscriptionPlans(): void {
+    this.userService.getSubscriptionPlans().subscribe({
+      next: (plans) => {
+        console.log('Loaded subscription plans:', plans);
+        this.subscriptionPlans = plans.filter(plan => plan.is_active !== false);
+      },
+      error: (error) => {
+        console.error('Error loading subscription plans:', error);
+        // Use default plans if there's an error
+        this.subscriptionPlans = [
+          { name: 'Basic', price: 9.99, max_screens: 1, max_users: 2, features: ['Basic content scheduling', 'Standard support'] },
+          { name: 'Standard', price: 29.99, max_screens: 5, max_users: 10, is_popular: true, features: ['Advanced scheduling', 'Priority support', 'Content templates'] },
+          { name: 'Premium', price: 99.99, max_screens: 20, max_users: 50, features: ['Custom branding', 'API access', 'Advanced analytics', 'Dedicated support'] }
+        ];
+      }
+    });
   }
 
   ngOnDestroy(): void {
@@ -680,15 +700,14 @@ export class UsersComponent implements OnInit, OnDestroy {
 
     // Add the new user to the beginning of the list without reloading
     if (user && user.id) {
-      // If the user is a simulated user (starts with 'user_'), add it to the list directly
-      if (user.id.toString().startsWith('user_')) {
-        console.log('UsersComponent: Adding simulated user to list');
-        this.users = [user, ...this.users];
-      } else {
-        // Otherwise reload the list from the server
-        console.log('UsersComponent: Reloading users after real user creation');
+      console.log('UsersComponent: Adding new user to list');
+      this.users = [user, ...this.users];
+
+      // Also reload the list from the server to ensure we have the latest data
+      setTimeout(() => {
+        console.log('UsersComponent: Reloading users after user creation');
         this.loadUsers();
-      }
+      }, 1000);
     } else {
       // Fallback to reloading if we don't have a valid user object
       this.loadUsers();

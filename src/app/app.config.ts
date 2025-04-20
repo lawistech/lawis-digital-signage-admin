@@ -3,7 +3,9 @@ import { ApplicationConfig, APP_INITIALIZER } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { importProvidersFrom } from '@angular/core';
-import { ReactiveFormsModule } from '@angular/forms';
+import { ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { provideAnimations } from '@angular/platform-browser/animations';
+import { CommonModule } from '@angular/common';
 
 // Function to initialize app settings
 function initializeApp() {
@@ -17,13 +19,18 @@ function initializeApp() {
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
+    provideAnimations(), // Required for Angular Material
     {
       provide: APP_INITIALIZER,
-      useFactory: () => 
+      useFactory: () =>
         initializeApp(),
       deps: [],
       multi: true
     },
-    importProvidersFrom(ReactiveFormsModule)
+    importProvidersFrom(
+      ReactiveFormsModule,
+      FormsModule,
+      CommonModule
+    )
   ]
 };

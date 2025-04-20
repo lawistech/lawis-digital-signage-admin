@@ -24,7 +24,19 @@ Alternatively, you can manually run the SQL commands in `src/environments/update
 
 Additionally, you need to add the `update_json_field` function to your Supabase database. This function is used to update JSON fields without overwriting the entire object. You can add this function by running the SQL commands in `src/environments/update-json-field.sql` in your Supabase SQL editor.
 
-### 2. Create a Super Admin User
+### 2. Understanding the User Creation Process
+
+In this implementation, users are created directly in the `profiles` table without creating an auth user. This approach is used to work around limitations with the Supabase Auth API.
+
+When a super admin creates a user:
+
+1. A new profile record is created in the `profiles` table with the provided information
+2. The user is assigned a random UUID as their ID
+3. The user is given the specified role (user, admin, or super_admin)
+
+**Important Note**: Users created this way will not be able to log in immediately. They will need to use the "Forgot Password" feature on the login page to set a password for their account. Make sure to inform users about this process when you create their accounts.
+
+### 3. Create a Super Admin User
 
 To create a super admin user, you need to update the user's metadata in the Supabase Auth dashboard:
 
@@ -115,6 +127,16 @@ If you're having trouble accessing the super admin functionality:
 1. Make sure the user has the `super_admin` role in their metadata
 2. Check the browser console for any errors
 3. Verify that the RPC functions have been added to your Supabase database
+
+### User Creation Issues
+
+If you're having trouble creating users:
+
+1. Verify that the user making the request has the `super_admin` role
+2. Check the browser console for any specific error messages
+3. Make sure the `profiles` table exists and has the correct schema
+4. Verify that the user has permission to insert records into the `profiles` table
+5. Check if there are any unique constraints on the `email` field that might be causing conflicts
 
 ### Data Issues
 

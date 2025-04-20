@@ -4,6 +4,7 @@ import { Observable, from, throwError, of } from 'rxjs';
 import { map, catchError, switchMap, tap, delay } from 'rxjs/operators';
 import { ActivityLogService } from './activity-log.service';
 import { EventBusService } from './event-bus.service';
+import { SuperAdminStatsService, SubscriptionPlan } from './super-admin-stats.service';
 
 export interface UserFilters {
   role?: string;
@@ -41,7 +42,7 @@ export interface Organization {
 
 export interface CreateUserRequest {
   email: string;
-  password: string;
+  password?: string; // Optional now
   full_name: string;
   role: string;
   organization_id?: string | null;
@@ -54,7 +55,8 @@ export class UserManagementService {
   constructor(
     private supabase: SupabaseService,
     private activityLogService: ActivityLogService,
-    private eventBus: EventBusService
+    private eventBus: EventBusService,
+    private statsService: SuperAdminStatsService
   ) {}
 
   getUsers(page: number = 1, pageSize: number = 10, filters?: UserFilters): Observable<User[]> {
@@ -233,6 +235,10 @@ export class UserManagementService {
     );
   }
 
+  getSubscriptionPlans(): Observable<SubscriptionPlan[]> {
+    return this.statsService.getSubscriptionPlans();
+  }
+
   createUser(userData: CreateUserRequest): Observable<User> {
     console.log('UserManagementService: Creating user with data:', {
       email: userData.email,
@@ -240,39 +246,55 @@ export class UserManagementService {
       role: userData.role
     });
 
-    // Create a unique ID for the new user
-    const newUserId = 'user_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    // Generate a random UUID for the user ID
+    const userId = crypto.randomUUID();
+    const now = new Date().toISOString();
 
-    // Create a timestamp for the user creation
-    const creationTimestamp = new Date().toISOString();
+    // Create a user directly in the profiles table
+    return from(
+      this.supabase.supabaseClient
+        .from('profiles')
+        .insert({
+          id: userId,
+          email: userData.email,
+          name: userData.full_name,
+          full_name: userData.full_name,
+          role: userData.role || 'user',
+          organization_id: userData.organization_id || null,
+          created_at: now,
+          updated_at: now
+        })
+        .select()
+        .single()
+    ).pipe(
+      map(({ data: profileData, error: profileError }) => {
+        if (profileError) {
+          console.error('Error creating profile record:', profileError);
+          throw new Error(`Failed to create user: ${profileError.message}`);
+        }
 
-    // Create a complete user object with all required fields
-    const newUser: User = {
-      id: newUserId,
-      email: userData.email,
-      full_name: userData.full_name,
-      role: userData.role || 'user',
-      organization_id: userData.organization_id || null,
-      created_at: creationTimestamp,
-      last_sign_in_at: null,
-      subscription_tier: 'free',
-      subscription_status: 'active',
-      payment_status: 'pending',
-      screen_count: 0,
-      max_screens: 5,
-      storage_usage: 0,
-      max_storage: 5242880 // 5GB
-    };
+        console.log('User profile created successfully:', profileData);
 
-    // In a real application, we would insert this user into the database
-    // For now, we'll simulate a successful user creation
-    console.log('UserManagementService: Successfully created simulated user:', newUserId);
+        // Create a complete user object with all required fields
+        const user: User = {
+          id: userId,
+          email: userData.email,
+          full_name: userData.full_name,
+          role: userData.role || 'user',
+          organization_id: userData.organization_id || null,
+          created_at: now,
+          last_sign_in_at: null,
+          subscription_tier: 'free',
+          subscription_status: 'active',
+          payment_status: 'pending',
+          screen_count: 0,
+          max_screens: 5,
+          storage_usage: 0,
+          max_storage: 5242880 // 5GB
+        };
 
-    // Return the new user object as an observable
-    return of(newUser).pipe(
-      // Add a delay to simulate network latency
-      delay(1000),
-
+        return user;
+      }),
       // Log the activity
       tap(user => {
         const currentUser = this.supabase.getCurrentUserSync();
@@ -307,7 +329,7 @@ export class UserManagementService {
       }),
       catchError(error => {
         console.error('Error creating user:', error);
-        return throwError(() => new Error('Failed to create user. ' + error.message));
+        return throwError(() => new Error('Failed to create user: ' + (error.message || 'Unknown error')));
       })
     );
   }
@@ -341,6 +363,31 @@ export class UserManagementService {
     // Add subscription fields to organization update if they exist
     if (userData.subscription_tier !== undefined) {
       organizationUpdateData.subscription_tier = userData.subscription_tier;
+
+      // Get the subscription plan details to update max_screens and max_users
+      return this.statsService.getSubscriptionPlans().pipe(
+        map(plans => {
+          const selectedPlan = plans.find(plan => plan.name === userData.subscription_tier);
+
+          if (selectedPlan) {
+            console.log('Found subscription plan:', selectedPlan);
+            // Update max_screens and max_users based on the selected plan
+            organizationUpdateData.max_screens = selectedPlan.max_screens;
+            organizationUpdateData.max_users = selectedPlan.max_users;
+
+            // Continue with the update
+            return { userData, profileUpdateData, organizationUpdateData, organizationId };
+          } else {
+            console.warn(`Subscription plan '${userData.subscription_tier}' not found`);
+            // Continue with the update without changing max_screens and max_users
+            return { userData, profileUpdateData, organizationUpdateData, organizationId };
+          }
+        }),
+        switchMap(({ userData, profileUpdateData, organizationUpdateData, organizationId }) => {
+          // Continue with the original update logic
+          return this.performUserUpdate(userId, userData, profileUpdateData, organizationUpdateData, organizationId);
+        })
+      );
     }
 
     if (userData.subscription_status !== undefined) {
@@ -369,6 +416,11 @@ export class UserManagementService {
       console.log('Updating organization with data:', organizationUpdateData);
     }
 
+    // Call the performUserUpdate method to handle the actual update
+    return this.performUserUpdate(userId, userData, profileUpdateData, organizationUpdateData, organizationId);
+  }
+
+  private performUserUpdate(userId: string, userData: Partial<User>, profileUpdateData: any, organizationUpdateData: any, organizationId: string | null): Observable<User> {
     // First update the profile
     return from(
       this.supabase.supabaseClient

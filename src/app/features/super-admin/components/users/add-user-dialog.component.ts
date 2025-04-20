@@ -57,18 +57,17 @@ import { UserManagementService, Organization } from '../../services/user-managem
             </div>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              formControlName="password"
-              class="w-full rounded-md border-gray-300"
-              [class.border-red-500]="userForm.get('password')?.invalid && userForm.get('password')?.touched"
-            >
-            <div *ngIf="userForm.get('password')?.invalid && userForm.get('password')?.touched" class="text-red-500 text-sm mt-1">
-              Password must be at least 6 characters
+          <!-- Password field removed as we're not creating an auth user -->
+          <div class="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-400 mb-4">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <span class="material-icons text-yellow-400">info</span>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm text-yellow-700">
+                  Note: This user will be created as a profile only. They will need to use the "Forgot Password" feature to set a password and log in.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -145,7 +144,6 @@ export class AddUserDialogComponent implements OnInit {
     this.userForm = this.fb.group({
       fullName: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(6)]],
       role: ['user', Validators.required],
       organizationId: [null]
     });
@@ -182,7 +180,6 @@ export class AddUserDialogComponent implements OnInit {
 
     const userData = {
       email: this.userForm.value.email,
-      password: this.userForm.value.password,
       full_name: this.userForm.value.fullName,
       role: this.userForm.value.role,
       organization_id: this.userForm.value.organizationId
@@ -196,7 +193,7 @@ export class AddUserDialogComponent implements OnInit {
         this.isSubmitting = false;
 
         // Show a success message
-        alert(`User ${userData.full_name} (${userData.email}) has been created successfully in simulation mode.\n\nNote: In a production environment, this would create a real user in the database.`);
+        alert(`User ${userData.full_name} (${userData.email}) has been created successfully.`);
 
         // Emit the user and close the dialog
         this.userCreated.emit(user);

@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { UserManagementService, User } from '../../services/user-management.service';
 import { EventBusService } from '../../services/event-bus.service';
+import { SubscriptionPlan } from '../../services/super-admin-stats.service';
 
 @Component({
   selector: 'app-edit-user-dialog',
@@ -111,12 +112,15 @@ import { EventBusService } from '../../services/event-bus.service';
                 <select
                   formControlName="subscriptionTier"
                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-all"
+                  (change)="onSubscriptionTierChange()"
                 >
                   <option value="free">Free</option>
-                  <option value="basic">Basic</option>
-                  <option value="premium">Premium</option>
-                  <option value="enterprise">Enterprise</option>
+                  <option *ngFor="let plan of subscriptionPlans" [value]="plan.name">{{ plan.name }} (£{{ plan.price }}/month)</option>
                 </select>
+                <div *ngIf="selectedPlan" class="text-xs text-gray-500 mt-1 flex items-center">
+                  <span class="material-icons text-xs mr-1">info</span>
+                  {{ selectedPlan.max_screens }} screens, {{ selectedPlan.max_users }} users
+                </div>
               </div>
 
               <!-- Subscription Status -->
@@ -280,6 +284,9 @@ export class EditUserDialogComponent implements OnInit {
   errorMessage = '';
   successMessage = '';
 
+  subscriptionPlans: SubscriptionPlan[] = [];
+  selectedPlan: SubscriptionPlan | null = null;
+
   constructor(
     private fb: FormBuilder,
     private userService: UserManagementService,
@@ -288,6 +295,44 @@ export class EditUserDialogComponent implements OnInit {
 
   ngOnInit(): void {
     this.initForm();
+    this.loadSubscriptionPlans();
+  }
+
+  loadSubscriptionPlans(): void {
+    this.userService.getSubscriptionPlans().subscribe({
+      next: (plans) => {
+        console.log('Loaded subscription plans:', plans);
+        this.subscriptionPlans = plans.filter(plan => plan.is_active !== false);
+        this.updateSelectedPlan();
+      },
+      error: (error) => {
+        console.error('Error loading subscription plans:', error);
+        // Use default plans if there's an error
+        this.subscriptionPlans = [
+          { name: 'Basic', price: 9.99, max_screens: 1, max_users: 2, features: ['Basic content scheduling', 'Standard support'] },
+          { name: 'Standard', price: 29.99, max_screens: 5, max_users: 10, is_popular: true, features: ['Advanced scheduling', 'Priority support', 'Content templates'] },
+          { name: 'Premium', price: 99.99, max_screens: 20, max_users: 50, features: ['Custom branding', 'API access', 'Advanced analytics', 'Dedicated support'] }
+        ];
+        this.updateSelectedPlan();
+      }
+    });
+  }
+
+  updateSelectedPlan(): void {
+    const currentTier = this.userForm.get('subscriptionTier')?.value;
+    this.selectedPlan = this.subscriptionPlans.find(plan => plan.name === currentTier) || null;
+
+    if (this.selectedPlan) {
+      console.log('Selected plan:', this.selectedPlan);
+      // Update max screens and max storage based on the selected plan
+      this.userForm.patchValue({
+        maxScreens: this.selectedPlan.max_screens
+      });
+    }
+  }
+
+  onSubscriptionTierChange(): void {
+    this.updateSelectedPlan();
   }
 
   initForm(): void {
