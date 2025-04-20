@@ -1,8 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { SuperAdminStatsService, SystemSettings, SubscriptionPlan } from '../../services/super-admin-stats.service';
 import { EditPlanDialogComponent } from './edit-plan-dialog.component';
+import { EventBusService, EventData } from '../../services/event-bus.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-settings',
@@ -337,7 +339,7 @@ import { EditPlanDialogComponent } from './edit-plan-dialog.component';
     </div>
   `
 })
-export class SettingsComponent implements OnInit {
+export class SettingsComponent implements OnInit, OnDestroy {
   generalSettingsForm: FormGroup;
   isLoading = false;
   errorMessage = '';
@@ -364,10 +366,14 @@ export class SettingsComponent implements OnInit {
     { level: 'warning', message: 'Storage usage above 80%', timestamp: '2023-05-14T22:10:00Z' }
   ];
 
+  // Subscriptions for event bus
+  private subscriptions: Subscription[] = [];
+
   constructor(
     private fb: FormBuilder,
     private statsService: SuperAdminStatsService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private eventBus: EventBusService
   ) {
     this.generalSettingsForm = this.fb.group({
       systemName: ['Digital Signage Platform', Validators.required],
@@ -380,6 +386,67 @@ export class SettingsComponent implements OnInit {
   ngOnInit() {
     this.loadSettings();
     this.loadSubscriptionPlans();
+    this.setupEventListeners();
+  }
+
+  ngOnDestroy() {
+    // Clean up subscriptions to prevent memory leaks
+    this.subscriptions.forEach(sub => sub.unsubscribe());
+  }
+
+  setupEventListeners() {
+    // Listen for subscription plan updates
+    this.subscriptions.push(
+      this.eventBus.on('subscription-plan-updated').subscribe((event: EventData) => {
+        console.log('Received subscription-plan-updated event:', event);
+        const updatedPlan = event.payload as SubscriptionPlan;
+
+        // Update the plan in the local array
+        const index = this.subscriptionPlans.findIndex(p => p.id === updatedPlan.id);
+        if (index !== -1) {
+          console.log(`Updating plan at index ${index}:`, updatedPlan);
+          this.subscriptionPlans[index] = updatedPlan;
+          // Force change detection
+          this.subscriptionPlans = [...this.subscriptionPlans];
+        }
+      })
+    );
+
+    // Listen for new subscription plans
+    this.subscriptions.push(
+      this.eventBus.on('subscription-plan-added').subscribe((event: EventData) => {
+        console.log('Received subscription-plan-added event:', event);
+        const newPlan = event.payload as SubscriptionPlan;
+
+        // Add the new plan to the local array if it doesn't exist already
+        if (!this.subscriptionPlans.some(p => p.id === newPlan.id)) {
+          console.log('Adding new plan to local array:', newPlan);
+          this.subscriptionPlans.push(newPlan);
+          // Sort plans by price
+          this.subscriptionPlans.sort((a, b) => a.price - b.price);
+          // Force change detection
+          this.subscriptionPlans = [...this.subscriptionPlans];
+        }
+      })
+    );
+
+    // Listen for subscription plan deletions
+    this.subscriptions.push(
+      this.eventBus.on('subscription-plan-deleted').subscribe((event: EventData) => {
+        console.log('Received subscription-plan-deleted event:', event);
+        const planId = event.payload as string;
+
+        // Remove the plan from the local array
+        const initialLength = this.subscriptionPlans.length;
+        this.subscriptionPlans = this.subscriptionPlans.filter(p => p.id !== planId);
+
+        if (this.subscriptionPlans.length !== initialLength) {
+          console.log(`Removed plan with ID ${planId} from local array`);
+          // Force change detection
+          this.subscriptionPlans = [...this.subscriptionPlans];
+        }
+      })
+    );
   }
 
   loadSubscriptionPlans() {
@@ -478,11 +545,7 @@ export class SettingsComponent implements OnInit {
     this.statsService.updateSubscriptionPlan(planId, planData).subscribe({
       next: (updatedPlan) => {
         console.log('Plan updated successfully:', updatedPlan);
-        // Update the plan in the local array
-        const index = this.subscriptionPlans.findIndex(p => p.id === planId);
-        if (index !== -1) {
-          this.subscriptionPlans[index] = updatedPlan;
-        }
+        // The local array will be updated via the event bus
         this.isLoadingPlans = false;
         this.planSuccessMessage = `Plan "${updatedPlan.name}" updated successfully!`;
 
@@ -513,10 +576,7 @@ export class SettingsComponent implements OnInit {
     this.statsService.addSubscriptionPlan(planData).subscribe({
       next: (newPlan) => {
         console.log('Plan added successfully:', newPlan);
-        // Add the new plan to the local array
-        this.subscriptionPlans.push(newPlan);
-        // Sort plans by price
-        this.subscriptionPlans.sort((a, b) => a.price - b.price);
+        // The local array will be updated via the event bus
         this.isLoadingPlans = false;
         this.planSuccessMessage = `New plan "${newPlan.name}" added successfully!`;
 
@@ -669,10 +729,9 @@ export class SettingsComponent implements OnInit {
     this.planSuccessMessage = '';
 
     this.statsService.deleteSubscriptionPlan(planId).subscribe({
-      next: (success) => {
+      next: () => {
         console.log('Plan deleted successfully');
-        // Remove the plan from the local array
-        this.subscriptionPlans = this.subscriptionPlans.filter(p => p.id !== planId);
+        // The local array will be updated via the event bus
         this.isLoadingPlans = false;
         this.planSuccessMessage = `Plan "${planName}" deleted successfully!`;
 

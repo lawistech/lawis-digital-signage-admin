@@ -59,6 +59,55 @@ export class UserManagementService {
     private statsService: SuperAdminStatsService
   ) {}
 
+  // Get screen count for a specific user
+  getUserScreenCount(userId: string): Observable<number> {
+    return from(
+      this.supabase.supabaseClient
+        .rpc('get_user_screen_count', { user_id: userId })
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) {
+          console.error('Error getting screen count:', error);
+          return 0; // Default to 0 on error
+        }
+        return data || 0;
+      }),
+      catchError(error => {
+        console.error('Error calling get_user_screen_count:', error);
+        return of(0); // Default to 0 on error
+      })
+    );
+  }
+
+  // Get screen counts for all users
+  getAllUserScreenCounts(): Observable<{[userId: string]: number}> {
+    return from(
+      this.supabase.supabaseClient
+        .rpc('get_all_user_screen_counts')
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) {
+          console.error('Error getting all screen counts:', error);
+          return {}; // Return empty object on error
+        }
+
+        // Convert array of {user_id, screen_count} to object map
+        const screenCountMap: {[userId: string]: number} = {};
+        if (Array.isArray(data)) {
+          data.forEach(item => {
+            screenCountMap[item.user_id] = item.screen_count;
+          });
+        }
+
+        return screenCountMap;
+      }),
+      catchError(error => {
+        console.error('Error calling get_all_user_screen_counts:', error);
+        return of({}); // Return empty object on error
+      })
+    );
+  }
+
   getUsers(page: number = 1, pageSize: number = 10, filters?: UserFilters): Observable<User[]> {
     const startRange = (page - 1) * pageSize;
     const endRange = page * pageSize - 1;
@@ -120,99 +169,94 @@ export class UserManagementService {
     // Apply ordering and pagination
     queryBuilder = queryBuilder.order('created_at', { ascending: false }).range(startRange, endRange);
 
-    return from(queryBuilder).pipe(
-      map(({ data, error }) => {
-        if (error) throw error;
+    // First get all user screen counts
+    return this.getAllUserScreenCounts().pipe(
+      switchMap(screenCounts => {
+        return from(queryBuilder).pipe(
+          map(({ data, error }) => {
+            if (error) throw error;
 
-        return data.map(user => {
-          // Get organization details if available
-          const organization = user.organizations || {};
-          const settings = organization.settings || {};
+            return data.map(user => {
+              // Get organization details if available
+              const organization = user.organizations || {};
+              const settings = organization.settings || {};
 
-          // Calculate storage usage from settings if available
-          const storageUsage = settings.storage_usage || 0;
-          const maxStorage = settings.max_storage || 5000; // Default 5GB
+              // Calculate storage usage from settings if available
+              const storageUsage = settings.storage_usage || 0;
+              const maxStorage = settings.max_storage || 5000; // Default 5GB
 
-          // Generate a deterministic screen count based on user ID
-          // This ensures the same user always has the same screen count
-          let screenCount = 1; // Default to 1
-          if (user.id) {
-            // Use the first character of the user ID to determine screen count
-            const firstChar = user.id.charAt(0);
-            const charCode = firstChar.charCodeAt(0);
-            // Generate a number between 1 and max_screens
-            screenCount = (charCode % (organization.max_screens || 7)) + 1;
-            // Ensure it doesn't exceed max_screens
-            screenCount = Math.min(screenCount, organization.max_screens || 7);
-          }
+              // Get the actual screen count for this user from our pre-fetched counts
+              const screenCount = user.id && screenCounts[user.id] ? screenCounts[user.id] : 0;
 
-          // Generate deterministic payment status based on user ID
-          const paymentStatuses = ['paid', 'pending', 'failed'];
-          let paymentStatus = 'paid'; // Default
-          if (user.id) {
-            // Use the second character of the user ID to determine payment status
-            const secondChar = user.id.length > 1 ? user.id.charAt(1) : user.id.charAt(0);
-            const charCode = secondChar.charCodeAt(0);
-            // For active subscriptions, use either paid or pending (not failed)
-            if (organization.subscription_status === 'active') {
-              paymentStatus = paymentStatuses[charCode % 2]; // 0 = paid, 1 = pending
-            } else {
-              paymentStatus = paymentStatuses[charCode % 3]; // Any status
-            }
-          }
+              // Generate deterministic payment status based on user ID
+              const paymentStatuses = ['paid', 'pending', 'failed'];
+              let paymentStatus = 'paid'; // Default
+              if (user.id) {
+                // Use the second character of the user ID to determine payment status
+                const secondChar = user.id.length > 1 ? user.id.charAt(1) : user.id.charAt(0);
+                const charCode = secondChar.charCodeAt(0);
+                // For active subscriptions, use either paid or pending (not failed)
+                if (organization.subscription_status === 'active') {
+                  paymentStatus = paymentStatuses[charCode % 2]; // 0 = paid, 1 = pending
+                } else {
+                  paymentStatus = paymentStatuses[charCode % 3]; // Any status
+                }
+              }
 
-          // Generate deterministic renewal date based on user ID
-          const today = new Date();
-          const renewalDate = new Date(today);
-          if (user.id) {
-            // Use the third character of the user ID to determine days until renewal
-            const thirdChar = user.id.length > 2 ? user.id.charAt(2) : user.id.charAt(0);
-            const charCode = thirdChar.charCodeAt(0);
-            // Generate a number between 1 and 30 for days until renewal
-            const daysUntilRenewal = (charCode % 30) + 1;
-            renewalDate.setDate(today.getDate() + daysUntilRenewal);
-          } else {
-            // Default to 30 days if no user ID
-            renewalDate.setDate(today.getDate() + 30);
-          }
+              // Generate deterministic renewal date based on user ID
+              const today = new Date();
+              const renewalDate = new Date(today);
+              if (user.id) {
+                // Use the third character of the user ID to determine days until renewal
+                const thirdChar = user.id.length > 2 ? user.id.charAt(2) : user.id.charAt(0);
+                const charCode = thirdChar.charCodeAt(0);
+                // Generate a number between 1 and 30 for days until renewal
+                const daysUntilRenewal = (charCode % 30) + 1;
+                renewalDate.setDate(today.getDate() + daysUntilRenewal);
+              } else {
+                // Default to 30 days if no user ID
+                renewalDate.setDate(today.getDate() + 30);
+              }
 
-          // Generate deterministic screen name based on user ID
-          const screenNames = ['Lobby Display', 'Conference Room', 'Reception', 'Cafeteria', 'Main Entrance'];
-          let screenName = screenNames[0]; // Default
-          if (user.id) {
-            // Use the fourth character of the user ID to determine screen name
-            const fourthChar = user.id.length > 3 ? user.id.charAt(3) : user.id.charAt(0);
-            const charCode = fourthChar.charCodeAt(0);
-            screenName = screenNames[charCode % screenNames.length];
-          }
+              // Generate deterministic screen name based on user ID
+              const screenNames = ['Lobby Display', 'Conference Room', 'Reception', 'Cafeteria', 'Main Entrance'];
+              let screenName = screenNames[0]; // Default
+              if (user.id) {
+                // Use the fourth character of the user ID to determine screen name
+                const fourthChar = user.id.length > 3 ? user.id.charAt(3) : user.id.charAt(0);
+                const charCode = fourthChar.charCodeAt(0);
+                screenName = screenNames[charCode % screenNames.length];
+              }
 
-          return {
-            id: user.id,
-            email: user.email,
-            // Use name field if it exists, otherwise try full_name
-            full_name: user.name || user.full_name || 'No Name',
-            role: user.role || 'user',
-            organization_id: user.organization_id,
-            organization_name: organization.name || 'N/A',
-            organization_created_at: organization.created_at,
-            created_at: user.created_at,
-            last_sign_in_at: user.last_sign_in_at || user.created_at,
-            // Add subscription and resource information
-            subscription_tier: organization.subscription_tier || 'free',
-            subscription_status: organization.subscription_status || 'inactive',
-            subscription_renewal_date: renewalDate.toISOString(),
-            screen_count: screenCount,
-            max_screens: organization.max_screens || 1,
-            storage_usage: storageUsage,
-            max_storage: maxStorage,
-            payment_status: paymentStatus as 'paid' | 'pending' | 'failed',
-            last_active_screen: screenName
-          };
-        });
-      }),
-      catchError(error => {
-        console.error('Error fetching users:', error);
-        return throwError(() => new Error('Failed to load users. Please try again.'));
+              return {
+                id: user.id,
+                email: user.email,
+                // Use name field if it exists, otherwise try full_name
+                full_name: user.name || user.full_name || 'No Name',
+                role: user.role || 'user',
+                organization_id: user.organization_id,
+                organization_name: organization.name || 'N/A',
+                organization_created_at: organization.created_at,
+                created_at: user.created_at,
+                last_sign_in_at: user.last_sign_in_at || user.created_at,
+                // Add subscription and resource information
+                subscription_tier: organization.subscription_tier || 'free',
+                subscription_status: organization.subscription_status || 'inactive',
+                subscription_renewal_date: renewalDate.toISOString(),
+                screen_count: screenCount,
+                max_screens: organization.max_screens || 1,
+                storage_usage: storageUsage,
+                max_storage: maxStorage,
+                payment_status: paymentStatus as 'paid' | 'pending' | 'failed',
+                last_active_screen: screenName
+              };
+            });
+          }),
+          catchError(error => {
+            console.error('Error fetching users:', error);
+            return throwError(() => new Error('Failed to load users. Please try again.'));
+          })
+        );
       })
     );
   }
@@ -287,7 +331,7 @@ export class UserManagementService {
           subscription_tier: 'free',
           subscription_status: 'active',
           payment_status: 'pending',
-          screen_count: 0,
+          screen_count: 0, // New users start with 0 screens
           max_screens: 5,
           storage_usage: 0,
           max_storage: 5242880 // 5GB
@@ -749,99 +793,94 @@ export class UserManagementService {
     // Apply ordering but no pagination for export (get all records)
     queryBuilder = queryBuilder.order('created_at', { ascending: false });
 
-    return from(queryBuilder).pipe(
-      map(({ data, error }) => {
-        if (error) throw error;
+    // First get all user screen counts
+    return this.getAllUserScreenCounts().pipe(
+      switchMap(screenCounts => {
+        return from(queryBuilder).pipe(
+          map(({ data, error }) => {
+            if (error) throw error;
 
-        return data.map(user => {
-          // Get organization details if available
-          const organization = user.organizations || {};
-          const settings = organization.settings || {};
+            return data.map(user => {
+              // Get organization details if available
+              const organization = user.organizations || {};
+              const settings = organization.settings || {};
 
-          // Calculate storage usage from settings if available
-          const storageUsage = settings.storage_usage || 0;
-          const maxStorage = settings.max_storage || 5000; // Default 5GB
+              // Calculate storage usage from settings if available
+              const storageUsage = settings.storage_usage || 0;
+              const maxStorage = settings.max_storage || 5000; // Default 5GB
 
-          // Generate a deterministic screen count based on user ID
-          // This ensures the same user always has the same screen count
-          let screenCount = 1; // Default to 1
-          if (user.id) {
-            // Use the first character of the user ID to determine screen count
-            const firstChar = user.id.charAt(0);
-            const charCode = firstChar.charCodeAt(0);
-            // Generate a number between 1 and max_screens
-            screenCount = (charCode % (organization.max_screens || 7)) + 1;
-            // Ensure it doesn't exceed max_screens
-            screenCount = Math.min(screenCount, organization.max_screens || 7);
-          }
+              // Get the actual screen count for this user from our pre-fetched counts
+              const screenCount = user.id && screenCounts[user.id] ? screenCounts[user.id] : 0;
 
-          // Generate deterministic payment status based on user ID
-          const paymentStatuses = ['paid', 'pending', 'failed'];
-          let paymentStatus = 'paid'; // Default
-          if (user.id) {
-            // Use the second character of the user ID to determine payment status
-            const secondChar = user.id.length > 1 ? user.id.charAt(1) : user.id.charAt(0);
-            const charCode = secondChar.charCodeAt(0);
-            // For active subscriptions, use either paid or pending (not failed)
-            if (organization.subscription_status === 'active') {
-              paymentStatus = paymentStatuses[charCode % 2]; // 0 = paid, 1 = pending
-            } else {
-              paymentStatus = paymentStatuses[charCode % 3]; // Any status
-            }
-          }
+              // Generate deterministic payment status based on user ID
+              const paymentStatuses = ['paid', 'pending', 'failed'];
+              let paymentStatus = 'paid'; // Default
+              if (user.id) {
+                // Use the second character of the user ID to determine payment status
+                const secondChar = user.id.length > 1 ? user.id.charAt(1) : user.id.charAt(0);
+                const charCode = secondChar.charCodeAt(0);
+                // For active subscriptions, use either paid or pending (not failed)
+                if (organization.subscription_status === 'active') {
+                  paymentStatus = paymentStatuses[charCode % 2]; // 0 = paid, 1 = pending
+                } else {
+                  paymentStatus = paymentStatuses[charCode % 3]; // Any status
+                }
+              }
 
-          // Generate deterministic renewal date based on user ID
-          const today = new Date();
-          const renewalDate = new Date(today);
-          if (user.id) {
-            // Use the third character of the user ID to determine days until renewal
-            const thirdChar = user.id.length > 2 ? user.id.charAt(2) : user.id.charAt(0);
-            const charCode = thirdChar.charCodeAt(0);
-            // Generate a number between 1 and 30 for days until renewal
-            const daysUntilRenewal = (charCode % 30) + 1;
-            renewalDate.setDate(today.getDate() + daysUntilRenewal);
-          } else {
-            // Default to 30 days if no user ID
-            renewalDate.setDate(today.getDate() + 30);
-          }
+              // Generate deterministic renewal date based on user ID
+              const today = new Date();
+              const renewalDate = new Date(today);
+              if (user.id) {
+                // Use the third character of the user ID to determine days until renewal
+                const thirdChar = user.id.length > 2 ? user.id.charAt(2) : user.id.charAt(0);
+                const charCode = thirdChar.charCodeAt(0);
+                // Generate a number between 1 and 30 for days until renewal
+                const daysUntilRenewal = (charCode % 30) + 1;
+                renewalDate.setDate(today.getDate() + daysUntilRenewal);
+              } else {
+                // Default to 30 days if no user ID
+                renewalDate.setDate(today.getDate() + 30);
+              }
 
-          // Generate deterministic screen name based on user ID
-          const screenNames = ['Lobby Display', 'Conference Room', 'Reception', 'Cafeteria', 'Main Entrance'];
-          let screenName = screenNames[0]; // Default
-          if (user.id) {
-            // Use the fourth character of the user ID to determine screen name
-            const fourthChar = user.id.length > 3 ? user.id.charAt(3) : user.id.charAt(0);
-            const charCode = fourthChar.charCodeAt(0);
-            screenName = screenNames[charCode % screenNames.length];
-          }
+              // Generate deterministic screen name based on user ID
+              const screenNames = ['Lobby Display', 'Conference Room', 'Reception', 'Cafeteria', 'Main Entrance'];
+              let screenName = screenNames[0]; // Default
+              if (user.id) {
+                // Use the fourth character of the user ID to determine screen name
+                const fourthChar = user.id.length > 3 ? user.id.charAt(3) : user.id.charAt(0);
+                const charCode = fourthChar.charCodeAt(0);
+                screenName = screenNames[charCode % screenNames.length];
+              }
 
-          return {
-            id: user.id,
-            email: user.email,
-            // Use name field if it exists, otherwise try full_name
-            full_name: user.name || user.full_name || 'No Name',
-            role: user.role || 'user',
-            organization_id: user.organization_id,
-            organization_name: organization.name || 'N/A',
-            organization_created_at: organization.created_at,
-            created_at: user.created_at,
-            last_sign_in_at: user.last_sign_in_at || user.created_at,
-            // Add subscription and resource information
-            subscription_tier: organization.subscription_tier || 'free',
-            subscription_status: organization.subscription_status || 'inactive',
-            subscription_renewal_date: renewalDate.toISOString(),
-            screen_count: screenCount,
-            max_screens: organization.max_screens || 1,
-            storage_usage: storageUsage,
-            max_storage: maxStorage,
-            payment_status: paymentStatus as 'paid' | 'pending' | 'failed',
-            last_active_screen: screenName
-          };
-        });
-      }),
-      catchError(error => {
-        console.error('Error fetching all users:', error);
-        return throwError(() => new Error('Failed to export users. Please try again.'));
+              return {
+                id: user.id,
+                email: user.email,
+                // Use name field if it exists, otherwise try full_name
+                full_name: user.name || user.full_name || 'No Name',
+                role: user.role || 'user',
+                organization_id: user.organization_id,
+                organization_name: organization.name || 'N/A',
+                organization_created_at: organization.created_at,
+                created_at: user.created_at,
+                last_sign_in_at: user.last_sign_in_at || user.created_at,
+                // Add subscription and resource information
+                subscription_tier: organization.subscription_tier || 'free',
+                subscription_status: organization.subscription_status || 'inactive',
+                subscription_renewal_date: renewalDate.toISOString(),
+                screen_count: screenCount,
+                max_screens: organization.max_screens || 1,
+                storage_usage: storageUsage,
+                max_storage: maxStorage,
+                payment_status: paymentStatus as 'paid' | 'pending' | 'failed',
+                last_active_screen: screenName
+              };
+            });
+          }),
+          catchError(error => {
+            console.error('Error fetching all users:', error);
+            return throwError(() => new Error('Failed to export users. Please try again.'));
+          })
+        );
       })
     );
   }

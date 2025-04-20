@@ -1,11 +1,103 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { SuperAdminStatsService, SystemSettings, SubscriptionPlan } from '../../services/super-admin-stats.service';
+import { EventBusService, EventData } from '../../services/event-bus.service';
+import { Subscription } from 'rxjs';
 
 @Component({
-  selector: 'app-settings',
-  templateUrl: './settings.component.html',
+  selector: 'app-settings-standalone',
+  template: `
+    <div class="p-6">
+      <h1 class="text-2xl font-bold mb-6">System Settings</h1>
+
+      <!-- Tabs -->
+      <div class="border-b border-gray-200 mb-6">
+        <nav class="-mb-px flex space-x-8">
+          <button
+            (click)="setActiveTab('general')"
+            class="py-2 px-1 border-b-2 font-medium text-sm"
+            [class.border-indigo-500]="activeTab === 'general'"
+            [class.text-indigo-600]="activeTab === 'general'"
+            [class.border-transparent]="activeTab !== 'general'"
+            [class.text-gray-500]="activeTab !== 'general'"
+          >
+            General
+          </button>
+          <button
+            (click)="setActiveTab('plans')"
+            class="py-2 px-1 border-b-2 font-medium text-sm"
+            [class.border-indigo-500]="activeTab === 'plans'"
+            [class.text-indigo-600]="activeTab === 'plans'"
+            [class.border-transparent]="activeTab !== 'plans'"
+            [class.text-gray-500]="activeTab !== 'plans'"
+          >
+            Subscription Plans
+          </button>
+          <button
+            (click)="setActiveTab('email')"
+            class="py-2 px-1 border-b-2 font-medium text-sm"
+            [class.border-indigo-500]="activeTab === 'email'"
+            [class.text-indigo-600]="activeTab === 'email'"
+            [class.border-transparent]="activeTab !== 'email'"
+            [class.text-gray-500]="activeTab !== 'email'"
+          >
+            Email Templates
+          </button>
+          <button
+            (click)="setActiveTab('logs')"
+            class="py-2 px-1 border-b-2 font-medium text-sm"
+            [class.border-indigo-500]="activeTab === 'logs'"
+            [class.text-indigo-600]="activeTab === 'logs'"
+            [class.border-transparent]="activeTab !== 'logs'"
+            [class.text-gray-500]="activeTab !== 'logs'"
+          >
+            System Logs
+          </button>
+        </nav>
+      </div>
+
+      <!-- Content based on active tab -->
+      <div *ngIf="activeTab === 'general'" class="space-y-6">
+        <h2 class="text-lg font-medium">General Settings</h2>
+        <!-- General settings form -->
+      </div>
+
+      <div *ngIf="activeTab === 'plans'" class="space-y-6">
+        <h2 class="text-lg font-medium">Subscription Plans</h2>
+        <div *ngIf="isLoadingPlans" class="text-center py-4">
+          <div class="spinner"></div>
+          <p class="mt-2 text-gray-500">Loading plans...</p>
+        </div>
+        <div *ngIf="!isLoadingPlans && subscriptionPlans.length === 0" class="text-center py-4">
+          <p class="text-gray-500">No subscription plans found.</p>
+        </div>
+        <div *ngIf="!isLoadingPlans && subscriptionPlans.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div *ngFor="let plan of subscriptionPlans" class="border rounded-lg p-4 shadow-sm">
+            <div class="flex justify-between items-center mb-2">
+              <h3 class="font-medium">{{ plan.name }}</h3>
+              <span class="text-gray-500">£{{ plan.price }}/mo</span>
+            </div>
+            <p class="text-sm text-gray-600 mb-2">{{ plan.description || 'No description' }}</p>
+            <div class="text-sm">
+              <div><strong>Max Screens:</strong> {{ plan.max_screens }}</div>
+              <div><strong>Max Users:</strong> {{ plan.max_users }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="activeTab === 'email'" class="space-y-6">
+        <h2 class="text-lg font-medium">Email Templates</h2>
+        <!-- Email templates content -->
+      </div>
+
+      <div *ngIf="activeTab === 'logs'" class="space-y-6">
+        <h2 class="text-lg font-medium">System Logs</h2>
+        <!-- System logs content -->
+      </div>
+    </div>
+  `,
   standalone: true,
   imports: [
     CommonModule,
@@ -13,7 +105,7 @@ import { SuperAdminStatsService, SystemSettings, SubscriptionPlan } from '../../
     FormsModule
   ]
 })
-export class SettingsStandaloneComponent implements OnInit {
+export class SettingsStandaloneComponent implements OnInit, OnDestroy {
   // Tabs
   activeTab = 'general';
 
@@ -51,9 +143,13 @@ export class SettingsStandaloneComponent implements OnInit {
     { id: 5, type: 'info', message: 'User john.doe@example.com logged in', timestamp: '2023-06-01T16:00:00Z' }
   ];
 
+  // Subscriptions for event bus
+  private subscriptions: Subscription[] = [];
+
   constructor(
     private fb: FormBuilder,
-    private statsService: SuperAdminStatsService
+    private statsService: SuperAdminStatsService,
+    private eventBus: EventBusService
   ) {
     this.generalSettingsForm = this.fb.group({
       systemName: ['Digital Signage Platform', Validators.required],
@@ -66,13 +162,74 @@ export class SettingsStandaloneComponent implements OnInit {
   ngOnInit() {
     this.loadSettings();
     this.loadSubscriptionPlans();
+    this.setupEventListeners();
   }
-  
+
+  ngOnDestroy() {
+    // Clean up subscriptions to prevent memory leaks
+    this.subscriptions.forEach(sub => sub.unsubscribe());
+  }
+
+  setupEventListeners() {
+    // Listen for subscription plan updates
+    this.subscriptions.push(
+      this.eventBus.on('subscription-plan-updated').subscribe((event: EventData) => {
+        console.log('Received subscription-plan-updated event:', event);
+        const updatedPlan = event.payload as SubscriptionPlan;
+
+        // Update the plan in the local array
+        const index = this.subscriptionPlans.findIndex(p => p.id === updatedPlan.id);
+        if (index !== -1) {
+          console.log(`Updating plan at index ${index}:`, updatedPlan);
+          this.subscriptionPlans[index] = updatedPlan;
+          // Force change detection
+          this.subscriptionPlans = [...this.subscriptionPlans];
+        }
+      })
+    );
+
+    // Listen for new subscription plans
+    this.subscriptions.push(
+      this.eventBus.on('subscription-plan-added').subscribe((event: EventData) => {
+        console.log('Received subscription-plan-added event:', event);
+        const newPlan = event.payload as SubscriptionPlan;
+
+        // Add the new plan to the local array if it doesn't exist already
+        if (!this.subscriptionPlans.some(p => p.id === newPlan.id)) {
+          console.log('Adding new plan to local array:', newPlan);
+          this.subscriptionPlans.push(newPlan);
+          // Sort plans by price
+          this.subscriptionPlans.sort((a, b) => a.price - b.price);
+          // Force change detection
+          this.subscriptionPlans = [...this.subscriptionPlans];
+        }
+      })
+    );
+
+    // Listen for subscription plan deletions
+    this.subscriptions.push(
+      this.eventBus.on('subscription-plan-deleted').subscribe((event: EventData) => {
+        console.log('Received subscription-plan-deleted event:', event);
+        const planId = event.payload as string;
+
+        // Remove the plan from the local array
+        const initialLength = this.subscriptionPlans.length;
+        this.subscriptionPlans = this.subscriptionPlans.filter(p => p.id !== planId);
+
+        if (this.subscriptionPlans.length !== initialLength) {
+          console.log(`Removed plan with ID ${planId} from local array`);
+          // Force change detection
+          this.subscriptionPlans = [...this.subscriptionPlans];
+        }
+      })
+    );
+  }
+
   loadSubscriptionPlans() {
     this.isLoadingPlans = true;
     this.planErrorMessage = '';
     console.log('Loading subscription plans...');
-    
+
     this.statsService.getSubscriptionPlans().subscribe({
       next: (plans) => {
         console.log('Subscription plans loaded successfully:', plans);
@@ -86,25 +243,21 @@ export class SettingsStandaloneComponent implements OnInit {
       }
     });
   }
-  
+
   openEditPlanDialog(plan?: SubscriptionPlan) {
     // Temporarily disabled until Angular Material is properly installed
     console.log('Edit plan dialog is temporarily disabled');
     console.log('Plan to edit:', plan);
   }
-  
+
   updateSubscriptionPlan(planId: string, planData: Partial<SubscriptionPlan>) {
     this.isLoadingPlans = true;
     this.planErrorMessage = '';
-    
+
     this.statsService.updateSubscriptionPlan(planId, planData).subscribe({
       next: (updatedPlan) => {
         console.log('Plan updated successfully:', updatedPlan);
-        // Update the plan in the local array
-        const index = this.subscriptionPlans.findIndex(p => p.id === planId);
-        if (index !== -1) {
-          this.subscriptionPlans[index] = updatedPlan;
-        }
+        // The local array will be updated via the event bus
         this.isLoadingPlans = false;
       },
       error: (error) => {
@@ -114,23 +267,46 @@ export class SettingsStandaloneComponent implements OnInit {
       }
     });
   }
-  
+
   addSubscriptionPlan(planData: Partial<SubscriptionPlan>) {
     this.isLoadingPlans = true;
     this.planErrorMessage = '';
-    
+
     this.statsService.addSubscriptionPlan(planData).subscribe({
       next: (newPlan) => {
         console.log('Plan added successfully:', newPlan);
-        // Add the new plan to the local array
-        this.subscriptionPlans.push(newPlan);
-        // Sort plans by price
-        this.subscriptionPlans.sort((a, b) => a.price - b.price);
+        // The local array will be updated via the event bus
         this.isLoadingPlans = false;
       },
       error: (error) => {
         console.error('Error adding subscription plan:', error);
         this.planErrorMessage = 'Failed to add subscription plan. Please try again.';
+        this.isLoadingPlans = false;
+      }
+    });
+  }
+
+  deleteSubscriptionPlan(planId: string) {
+    // Find the plan name before deletion for the success message
+    const planToDelete = this.subscriptionPlans.find(p => p.id === planId);
+    const planName = planToDelete?.name || 'Unknown plan';
+
+    if (!confirm(`Are you sure you want to delete the "${planName}" plan? This action cannot be undone.`)) {
+      return;
+    }
+
+    this.isLoadingPlans = true;
+    this.planErrorMessage = '';
+
+    this.statsService.deleteSubscriptionPlan(planId).subscribe({
+      next: () => {
+        console.log('Plan deleted successfully');
+        // The local array will be updated via the event bus
+        this.isLoadingPlans = false;
+      },
+      error: (error) => {
+        console.error('Error deleting subscription plan:', error);
+        this.planErrorMessage = 'Failed to delete subscription plan. Please try again.';
         this.isLoadingPlans = false;
       }
     });
@@ -160,7 +336,7 @@ export class SettingsStandaloneComponent implements OnInit {
         console.error('Error loading settings in component:', error);
         this.errorMessage = 'Failed to load settings. Please try again.';
         this.isLoading = false;
-        
+
         // Set default values in case of error
         this.generalSettingsForm.patchValue({
           systemName: 'Digital Signage Platform',

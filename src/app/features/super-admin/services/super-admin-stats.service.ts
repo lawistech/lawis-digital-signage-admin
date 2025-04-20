@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
-import { Observable, forkJoin, map, from, of, catchError } from 'rxjs';
+import { Observable, forkJoin, map, from, of, catchError, tap } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { SupabaseService } from '../../../core/services/supabase.service';
+import { EventBusService } from './event-bus.service';
 
 export interface DashboardStats {
   totalScreens: number;
@@ -52,7 +53,10 @@ export interface SubscriptionPlan {
   providedIn: 'root'
 })
 export class SuperAdminStatsService {
-  constructor(private supabase: SupabaseService) {}
+  constructor(
+    private supabase: SupabaseService,
+    private eventBus: EventBusService
+  ) {}
 
   getDashboardStats(): Observable<DashboardStats> {
     return forkJoin({
@@ -192,9 +196,9 @@ export class SuperAdminStatsService {
   private getMockScreenStats() {
     // Generate mock screen stats
     return {
-      total: Math.floor(Math.random() * 100) + 50, // 50-150 screens
-      active: Math.floor(Math.random() * 80) + 40, // 40-120 active screens
-      totalUsers: Math.floor(Math.random() * 30) + 10 // 10-40 users
+      total: 0, // Default to 0 instead of random values
+      active: 0, // Default to 0 instead of random values
+      totalUsers: 0 // Default to 0 instead of random values
     };
   }
 
@@ -331,7 +335,7 @@ export class SuperAdminStatsService {
 
         console.log('Plan features after processing (update):', features);
 
-        return {
+        const updatedPlan = {
           id: data.id,
           name: data.name,
           price: parseFloat(data.price) || 0,
@@ -344,6 +348,14 @@ export class SuperAdminStatsService {
           created_at: data.created_at,
           updated_at: data.updated_at
         } as SubscriptionPlan;
+
+        // Emit an event to notify subscribers that a plan has been updated
+        this.eventBus.emit({
+          type: 'subscription-plan-updated',
+          payload: updatedPlan
+        });
+
+        return updatedPlan;
       }),
       catchError(error => {
         console.error('Error updating subscription plan:', error);
@@ -365,6 +377,13 @@ export class SuperAdminStatsService {
             is_active: planData.is_active !== false,
             updated_at: new Date().toISOString()
           };
+
+          // Emit an event for the mock data as well
+          this.eventBus.emit({
+            type: 'subscription-plan-updated',
+            payload: updatedPlan
+          });
+
           return of(updatedPlan);
         }
         throw error;
@@ -412,7 +431,7 @@ export class SuperAdminStatsService {
 
         console.log('Plan features after processing (add):', features);
 
-        return {
+        const newPlan = {
           id: data.id,
           name: data.name,
           price: parseFloat(data.price) || 0,
@@ -425,6 +444,14 @@ export class SuperAdminStatsService {
           created_at: data.created_at,
           updated_at: data.updated_at
         } as SubscriptionPlan;
+
+        // Emit an event to notify subscribers that a new plan has been added
+        this.eventBus.emit({
+          type: 'subscription-plan-added',
+          payload: newPlan
+        });
+
+        return newPlan;
       }),
       catchError(error => {
         console.error('Error adding subscription plan:', error);
@@ -447,6 +474,13 @@ export class SuperAdminStatsService {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           };
+
+          // Emit an event for the mock data as well
+          this.eventBus.emit({
+            type: 'subscription-plan-added',
+            payload: mockPlan
+          });
+
           return of(mockPlan);
         }
         throw error;
@@ -473,6 +507,13 @@ export class SuperAdminStatsService {
           throw error;
         }
         console.log('Subscription plan deleted successfully');
+
+        // Emit an event to notify subscribers that a plan has been deleted
+        this.eventBus.emit({
+          type: 'subscription-plan-deleted',
+          payload: planId
+        });
+
         return true;
       }),
       catchError(error => {
@@ -480,6 +521,12 @@ export class SuperAdminStatsService {
         // If we're in development mode, use mock data to allow testing
         if (error.message === 'Not authorized' && !environment.production) {
           console.warn('Using mock data for development. In production, please fix the authorization issue.');
+          // Emit an event for the mock data as well
+          this.eventBus.emit({
+            type: 'subscription-plan-deleted',
+            payload: planId
+          });
+
           return of(true);
         }
         throw error;
