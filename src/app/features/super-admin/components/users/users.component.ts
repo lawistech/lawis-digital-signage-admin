@@ -106,14 +106,31 @@ import { SubscriptionPlan } from '../../services/super-admin-stats.service';
                 </div>
               </div>
 
-              <!-- Status filter -->
+              <!-- Payment Status filter -->
+              <div class="relative">
+                <select
+                  class="appearance-none pl-3 pr-8 py-2 border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 rounded-md text-sm text-slate-700 bg-white"
+                  [(ngModel)]="selectedPaymentStatus"
+                  (change)="loadUsers()"
+                >
+                  <option value="all">All Payment Statuses</option>
+                  <option value="paid">Paid</option>
+                  <option value="pending">Pending</option>
+                  <option value="failed">Failed</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                  <span class="material-icons text-slate-400 text-sm">expand_more</span>
+                </div>
+              </div>
+
+              <!-- Subscription Status filter -->
               <div class="relative">
                 <select
                   class="appearance-none pl-3 pr-8 py-2 border border-slate-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 rounded-md text-sm text-slate-700 bg-white"
                   [(ngModel)]="selectedStatus"
                   (change)="loadUsers()"
                 >
-                  <option value="all">All Statuses</option>
+                  <option value="all">All Subscription Statuses</option>
                   <option value="active">Active</option>
                   <option value="pending">Pending</option>
                   <option value="inactive">Inactive</option>
@@ -334,12 +351,18 @@ import { SubscriptionPlan } from '../../services/super-admin-stats.service';
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full"
                       [ngClass]="{
                         'bg-green-100 text-green-800': user.payment_status === 'paid',
                         'bg-yellow-100 text-yellow-800': user.payment_status === 'pending',
                         'bg-red-100 text-red-800': user.payment_status === 'failed'
                       }">
+                  <span class="material-icons text-sm mr-1"
+                        [ngClass]="{
+                          'text-green-600': user.payment_status === 'paid',
+                          'text-yellow-600': user.payment_status === 'pending',
+                          'text-red-600': user.payment_status === 'failed'
+                        }">payments</span>
                   {{ user.payment_status | titlecase }}
                 </span>
               </td>
@@ -482,6 +505,7 @@ export class UsersComponent implements OnInit, OnDestroy {
   searchTerm = '';
   selectedRole = 'all';
   selectedStatus = 'all';
+  selectedPaymentStatus = 'all';
   selectedTier = 'all';
   dateFilter = 'all';
   totalUsers = 0;
@@ -512,6 +536,7 @@ export class UsersComponent implements OnInit, OnDestroy {
     const filters = {
       role: this.selectedRole !== 'all' ? this.selectedRole : undefined,
       status: this.selectedStatus !== 'all' ? this.selectedStatus : undefined,
+      paymentStatus: this.selectedPaymentStatus !== 'all' ? this.selectedPaymentStatus : undefined,
       tier: this.selectedTier !== 'all' ? this.selectedTier : undefined,
       searchTerm: this.searchTerm || undefined,
       dateFilter: this.dateFilter !== 'all' ? this.dateFilter : undefined
@@ -597,6 +622,7 @@ export class UsersComponent implements OnInit, OnDestroy {
     this.searchTerm = '';
     this.selectedRole = 'all';
     this.selectedStatus = 'all';
+    this.selectedPaymentStatus = 'all';
     this.selectedTier = 'all';
     this.dateFilter = 'all';
     this.loadUsers();

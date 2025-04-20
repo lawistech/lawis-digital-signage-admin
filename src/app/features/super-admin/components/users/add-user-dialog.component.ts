@@ -57,7 +57,7 @@ import { UserManagementService, Organization } from '../../services/user-managem
             </div>
           </div>
 
-          <!-- Password field removed as we're not creating an auth user -->
+          <!-- Note about user creation -->
           <div class="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-400 mb-4">
             <div class="flex">
               <div class="flex-shrink-0">

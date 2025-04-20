@@ -30,21 +30,34 @@ import { User, UserManagementService } from '../../services/user-management.serv
               <h3 class="text-lg font-medium text-gray-900">{{ user.full_name || 'N/A' }}</h3>
 
               <!-- Email with improved visibility -->
-              <div class="my-2 p-2 bg-blue-50 rounded-md border border-blue-100">
-                <a href="mailto:{{ user.email }}" class="text-sm text-blue-600 hover:text-blue-800 flex items-center" title="Click to email this user">
+              <div class="my-3 p-3 bg-blue-50 rounded-md border border-blue-100">
+                <div class="flex justify-between items-center mb-1">
+                  <div class="text-xs font-medium text-blue-700">Email Address</div>
+                </div>
+                <div class="text-sm font-medium text-gray-800 break-all mb-2">{{ user.email }}</div>
+                <a href="mailto:{{ user.email }}" class="text-sm text-blue-600 hover:text-blue-800 flex items-center justify-center w-full bg-white py-1 px-2 rounded border border-blue-200 transition-colors duration-150" title="Click to email this user">
                   <span class="material-icons text-sm mr-1">email</span>
-                  <span class="font-medium">{{ user.email }}</span>
+                  <span class="font-medium">Contact User</span>
                 </a>
               </div>
-              <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full mb-3"
-                    [ngClass]="{
-                      'bg-green-100 text-green-800': user.payment_status === 'paid',
-                      'bg-yellow-100 text-yellow-800': user.payment_status === 'pending',
-                      'bg-red-100 text-red-800': user.payment_status === 'failed'
-                    }">
-                {{ user.payment_status | titlecase }}
-              </span>
-              <div class="text-xs text-gray-500 mb-1">
+              <div class="my-2">
+                <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full"
+                      [ngClass]="{
+                        'bg-green-100 text-green-800': user.payment_status === 'paid',
+                        'bg-yellow-100 text-yellow-800': user.payment_status === 'pending',
+                        'bg-red-100 text-red-800': user.payment_status === 'failed'
+                      }">
+                  <span class="material-icons text-sm mr-1"
+                        [ngClass]="{
+                          'text-green-600': user.payment_status === 'paid',
+                          'text-yellow-600': user.payment_status === 'pending',
+                          'text-red-600': user.payment_status === 'failed'
+                        }">payments</span>
+                  {{ user.payment_status | titlecase }}
+                </span>
+              </div>
+              <div class="text-xs text-gray-500 mb-1 flex items-center">
+                <span class="material-icons text-xs mr-1">badge</span>
                 Role: {{ user.role }}
               </div>
               <div class="text-xs text-gray-500">
@@ -105,18 +118,29 @@ import { User, UserManagementService } from '../../services/user-management.serv
             <div class="bg-white p-4 rounded-lg border border-gray-200">
               <h3 class="text-lg font-medium text-gray-900 mb-3">Resource Usage</h3>
 
-              <!-- Screen Usage with Progress Bar -->
-              <div class="mb-4">
-                <div class="flex items-center justify-between mb-1">
+              <!-- Screen Usage with Enhanced Progress Bar -->
+              <div class="mb-4 p-3 bg-blue-50 rounded-md border border-blue-100">
+                <div class="flex items-center justify-between mb-2">
                   <div class="flex items-center">
                     <span class="material-icons text-sm mr-1 text-blue-600">desktop_windows</span>
-                    <span class="text-sm font-medium text-gray-700">Screen Usage</span>
+                    <span class="text-sm font-medium text-blue-700">Screen Usage</span>
                   </div>
-                  <span class="text-sm text-gray-600">{{ user.screen_count || 0 }}/{{ user.max_screens || 1 }}</span>
+                  <div class="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full font-medium">
+                    {{ user.screen_count || 0 }}/{{ user.max_screens || 1 }} screens
+                  </div>
                 </div>
-                <div class="w-full bg-gray-200 rounded-full h-2">
-                  <div class="bg-blue-600 h-2 rounded-full"
-                       [style.width.%]="getPercentage(user.screen_count || 0, user.max_screens || 1)"></div>
+                <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                  <div class="h-3 rounded-full transition-all duration-300"
+                       [style.width.%]="getPercentage(user.screen_count || 0, user.max_screens || 1)"
+                       [ngClass]="{
+                         'bg-red-500': getPercentage(user.screen_count || 0, user.max_screens || 1) > 90,
+                         'bg-yellow-500': getPercentage(user.screen_count || 0, user.max_screens || 1) > 70 && getPercentage(user.screen_count || 0, user.max_screens || 1) <= 90,
+                         'bg-blue-500': getPercentage(user.screen_count || 0, user.max_screens || 1) <= 70
+                       }"></div>
+                </div>
+                <div class="text-xs text-gray-600 flex items-center">
+                  <span class="material-icons text-xs mr-1 text-blue-500">info</span>
+                  <span>Last active screen: <span class="font-medium">{{ user.last_active_screen || 'None' }}</span></span>
                 </div>
               </div>
 
@@ -138,16 +162,7 @@ import { User, UserManagementService } from '../../services/user-management.serv
               </div>
             </div>
 
-            <!-- Last Active Screen -->
-            <div *ngIf="user.last_active_screen" class="bg-white p-4 rounded-lg border border-gray-200 mt-4">
-              <div class="flex items-center">
-                <span class="material-icons text-sm mr-2 text-gray-600">monitor</span>
-                <div>
-                  <div class="text-sm font-medium text-gray-700">Last Active Screen</div>
-                  <div class="text-sm text-gray-600">{{ user.last_active_screen }}</div>
-                </div>
-              </div>
-            </div>
+            <!-- Last Active Screen section removed as it's now included in the Screen Usage section -->
           </div>
         </div>
 
